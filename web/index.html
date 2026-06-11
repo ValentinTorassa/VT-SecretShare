@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VT-SecretShare // transmisión cifrada</title>
+<link rel="stylesheet" href="/web/fx.css">
+<script type="importmap">
+{ "imports": { "three": "/web/vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="three"></canvas>
+<canvas id="matrix"></canvas>
+<div class="vignette"></div>
+<div class="scanlines"></div>
+
+<div class="stage">
+  <div class="panel" id="panel">
+    <div class="bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="path">root@vt-security:~/secretshare#</span>
+      <span class="langtog">
+        <button data-lang="es">ES</button><span class="sep">/</span><button data-lang="en">EN</button>
+      </span>
+    </div>
+
+    <h1 class="glitch" data-text="VT-SECRETSHARE">VT-SECRETSHARE</h1>
+    <p class="sub"><span id="typed"></span><span class="cursor"></span></p>
+
+    <label for="secret" data-i18n="label_secret"></label>
+    <textarea id="secret" data-i18n-ph="ph_secret"></textarea>
+
+    <label for="ttl" data-i18n="label_ttl"></label>
+    <select id="ttl">
+      <option value="600" data-i18n="ttl_10m"></option>
+      <option value="3600" data-i18n="ttl_1h"></option>
+      <option value="86400" selected data-i18n="ttl_1d"></option>
+      <option value="604800" data-i18n="ttl_7d"></option>
+    </select>
+
+    <button class="btn" id="create" data-i18n="btn_create"></button>
+    <div class="err" id="err"></div>
+
+    <div class="result" id="result">
+      <label data-i18n="label_link"></label>
+      <div class="linkbox">
+        <input id="link" readonly>
+        <button class="btn copy" id="copy" data-i18n="btn_copy"></button>
+      </div>
+      <div class="meta" id="meta"></div>
+    </div>
+
+    <div class="foot" data-i18n-html="foot_index"></div>
+
+    <!-- cipher animation overlay -->
+    <div class="cipherfx" id="cipherfx">
+      <div class="lbl" id="cipherlbl">CIFRANDO</div>
+      <pre id="cipherstream"></pre>
+      <div class="pbar"><i id="cipherbar"></i></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initVault } from "/web/bg.js";
+  window.__vault = initVault(document.getElementById("three"));
+</script>
+<script src="/web/matrix.js"></script>
+<script src="/web/i18n.js"></script>
+<script src="/web/anim.js"></script>
+<script src="/web/crypto.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+
+// typewriter that restarts on language change
+let typeToken = 0;
+function startType(text){
+  const my = ++typeToken; let i = 0;
+  (function tick(){ if(my!==typeToken) return; if(i<=text.length){ $("#typed").textContent = text.slice(0,i++); setTimeout(tick, 34);} })();
+}
+VT.onChange(() => startType(VT.t("typed_index")));
+
+$("#create").addEventListener("click", async () => {
+  const secret = $("#secret").value;
+  const errEl = $("#err"); errEl.textContent = "";
+  if (!secret.trim()) { errEl.textContent = VT.t("err_empty"); return; }
+
+  $("#create").disabled = true;
+  $("#create").textContent = VT.t("btn_create_busy");
+
+  // show the encrypt animation
+  $("#cipherlbl").textContent = VT.t("cipher_label");
+  $("#cipherfx").classList.add("show");
+  window.__vault && window.__vault.pulse();
+  const animDone = new Promise(r => VTAnim.cipherStream($("#cipherstream"), $("#cipherbar"), 1300, r));
+
+  try {
+    const { ciphertext, keyFragment } = await vtEncrypt(secret);   // key stays in-browser
+    const ttl = parseInt($("#ttl").value, 10);
+    const res = await fetch("/api/secret", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ciphertext, ttl_seconds: ttl }),
+    });
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || ("HTTP "+res.status)); }
+    const data = await res.json();
+
+    await animDone;                          // let the animation finish for effect
+    $("#cipherfx").classList.remove("show");
+
+    const url = `${location.origin}/s/${data.id}#${keyFragment}`;
+    $("#link").value = url;
+    $("#meta").innerHTML = `${VT.t("meta_pre")}<span style="color:var(--cyan)">${new Date(data.expires_at).toLocaleString()}</span>${VT.t("meta_post")}`;
+    $("#result").classList.add("show");
+    $("#secret").value = "";
+    window.__vault && window.__vault.pulse();
+  } catch (e) {
+    $("#cipherfx").classList.remove("show");
+    errEl.textContent = VT.t("err_prefix") + e.message;
+  } finally {
+    $("#create").disabled = false;
+    $("#create").textContent = VT.t("btn_create");
+  }
+});
+
+$("#copy").addEventListener("click", () => {
+  const el = $("#link"); el.select();
+  navigator.clipboard?.writeText(el.value);
+  $("#copy").textContent = VT.t("copied"); setTimeout(()=>$("#copy").textContent = VT.t("btn_copy"), 1200);
+});
+</script>
+</body>
+</html>

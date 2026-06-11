@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VT-SecretShare // descifrando transmisión</title>
+<link rel="stylesheet" href="/web/fx.css">
+<script type="importmap">
+{ "imports": { "three": "/web/vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="three"></canvas>
+<canvas id="matrix"></canvas>
+<div class="vignette"></div>
+<div class="scanlines"></div>
+
+<div class="stage">
+  <div class="panel danger" id="panel">
+    <div class="bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="path">incoming::transmission</span>
+      <span class="langtog">
+        <button data-lang="es">ES</button><span class="sep">/</span><button data-lang="en">EN</button>
+      </span>
+    </div>
+
+    <h1 class="glitch" data-text="SECRET//IN">SECRET<span style="color:var(--red)">//IN</span></h1>
+    <p class="sub"><span id="typed"></span><span class="cursor"></span></p>
+
+    <div id="ready">
+      <div class="warn" data-i18n-html="warn_view"></div>
+      <button class="btn red" id="reveal" data-i18n="btn_reveal"></button>
+    </div>
+
+    <div class="secretbox" id="secretbox">
+      <label data-i18n="label_decrypted"></label>
+      <pre id="plain"></pre>
+      <button class="btn copy" id="copy" style="margin-top:14px;width:100%" data-i18n="btn_copy_full"></button>
+      <button class="btn ghost" id="own" data-i18n="btn_create_own" onclick="location.href='/'"></button>
+    </div>
+
+    <div class="gone" id="gone"></div>
+
+    <div class="foot" data-i18n-html="foot_view"></div>
+
+    <div class="cipherfx" id="cipherfx">
+      <div class="lbl" id="cipherlbl">DESCIFRANDO</div>
+      <pre id="cipherstream"></pre>
+      <div class="pbar"><i id="cipherbar"></i></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initVault } from "/web/bg.js";
+  const v = initVault(document.getElementById("three"));
+  v.setDanger();
+  window.__vault = v;
+</script>
+<script src="/web/matrix.js"></script>
+<script src="/web/i18n.js"></script>
+<script src="/web/anim.js"></script>
+<script src="/web/crypto.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const id = location.pathname.split("/").pop();
+const keyFragment = location.hash.slice(1);
+
+let typeToken = 0;
+function startType(text){
+  const my = ++typeToken; let i = 0;
+  (function tick(){ if(my!==typeToken) return; if(i<=text.length){ $("#typed").textContent = text.slice(0,i++); setTimeout(tick, 30);} })();
+}
+VT.onChange(() => startType(VT.t("typed_view")));
+
+if (!keyFragment) {
+  $("#ready").style.display = "none";
+  $("#gone").textContent = VT.t("err_link_incomplete");
+  $("#gone").classList.add("show");
+}
+
+$("#reveal").addEventListener("click", async () => {
+  $("#reveal").disabled = true;
+  $("#reveal").textContent = VT.t("btn_reveal_busy");
+
+  $("#cipherlbl").textContent = VT.t("decipher_label");
+  $("#cipherfx").classList.add("show");
+  window.__vault && window.__vault.pulse();
+  const animDone = new Promise(r => VTAnim.cipherStream($("#cipherstream"), $("#cipherbar"), 1300, r));
+
+  try {
+    const res = await fetch(`/api/secret/${encodeURIComponent(id)}`);   // burns server-side
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || ("HTTP "+res.status)); }
+    const { ciphertext } = await res.json();
+    const plain = await vtDecrypt(ciphertext, keyFragment);             // decrypt in-browser
+
+    await animDone;
+    $("#cipherfx").classList.remove("show");
+    $("#ready").style.display = "none";
+    $("#secretbox").classList.add("show");
+    window.__vault && (window.__vault.setSafe(), window.__vault.pulse());
+    document.getElementById("panel").classList.remove("danger");
+    await VTAnim.scrambleReveal($("#plain"), plain, 1300);              // "decode" the secret
+  } catch (e) {
+    $("#cipherfx").classList.remove("show");
+    $("#ready").style.display = "none";
+    $("#gone").textContent = VT.t("gone_prefix") + e.message;
+    $("#gone").classList.add("show");
+  }
+});
+
+$("#copy").addEventListener("click", () => {
+  navigator.clipboard?.writeText($("#plain").textContent);
+  $("#copy").textContent = VT.t("copied_full"); setTimeout(()=>$("#copy").textContent = VT.t("btn_copy_full"), 1200);
+});
+</script>
+</body>
+</html>
