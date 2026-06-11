@@ -49,12 +49,19 @@ body{
 
 /* theme + language toggles */
 .toggles{margin-left:auto;display:flex;align-items:center;gap:14px;flex:0 0 auto}
-.themetog,.langtog{display:flex;align-items:center;gap:3px;font-size:11px;letter-spacing:1px}
-.themetog button,.langtog button{all:unset;cursor:pointer;color:var(--muted);padding:2px 7px;border-radius:6px;transition:.15s}
-.themetog button:hover,.langtog button:hover{color:var(--txt)}
-.themetog button.on,.langtog button.on{color:var(--green);background:rgba(39,208,122,.12);text-shadow:0 0 8px rgba(39,208,122,.55)}
-.themetog .sep,.langtog .sep{color:#2a3a4a}
-.danger .themetog button.on,.danger .langtog button.on{color:var(--red);background:rgba(255,59,59,.12);text-shadow:0 0 8px rgba(255,59,59,.55)}
+.themetog{display:flex;align-items:center;gap:3px;font-size:11px;letter-spacing:1px}
+.themetog button{all:unset;cursor:pointer;color:var(--muted);padding:2px 7px;border-radius:6px;transition:.15s}
+.themetog button:hover{color:var(--txt)}
+.themetog button.on{color:var(--green);background:rgba(39,208,122,.12);text-shadow:0 0 8px rgba(39,208,122,.55)}
+.themetog .sep{color:#2a3a4a}
+.danger .themetog button.on{color:var(--red);background:rgba(255,59,59,.12);text-shadow:0 0 8px rgba(255,59,59,.55)}
+
+/* language: tiny flag-only buttons, dimmed when inactive */
+.langtog{display:inline-flex;align-items:center;gap:2px;line-height:1}
+.langtog button{all:unset;cursor:pointer;font-size:13px;line-height:1;padding:1px 3px;border-radius:4px;
+  opacity:.32;filter:grayscale(.85);transition:opacity .15s,filter .15s}
+.langtog button:hover{opacity:.7;filter:grayscale(.3)}
+.langtog button.on{opacity:1;filter:none}
 
 /* cipher / decipher overlay */
 .cipherfx{position:absolute;inset:0;z-index:9;display:none;flex-direction:column;
