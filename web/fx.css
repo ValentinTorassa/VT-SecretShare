@@ -3,6 +3,7 @@
   --bg:#05070c; --panel:rgba(10,15,24,.62); --line:#1d6b48;
   --txt:#dfe7ee; --muted:#6f8aa0; --green:#27d07a; --red:#ff3b3b;
   --cyan:#5df2ff; --amber:#ffcf4d;
+  color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -37,13 +38,23 @@ body{
 .dot.r{background:var(--red)} .dot.y{background:var(--amber)} .dot.g{background:var(--green)}
 .bar .path{margin-left:12px;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* language toggle */
-.langtog{margin-left:auto;display:flex;align-items:center;gap:3px;font-size:11px;letter-spacing:1px;flex:0 0 auto}
-.langtog button{all:unset;cursor:pointer;color:var(--muted);padding:2px 7px;border-radius:6px;transition:.15s}
-.langtog button:hover{color:var(--txt)}
-.langtog button.on{color:var(--green);background:rgba(39,208,122,.12);text-shadow:0 0 8px rgba(39,208,122,.55)}
-.langtog .sep{color:#2a3a4a}
-.danger .langtog button.on{color:var(--red);background:rgba(255,59,59,.12);text-shadow:0 0 8px rgba(255,59,59,.55)}
+/* brand lockup: penguin + VT Security */
+.brand{display:flex;align-items:center;gap:9px;margin-left:6px}
+.brand .peng{width:30px;height:30px;flex:0 0 auto;background:center/contain no-repeat url(/web/penguin-offwhite.png);
+  filter:drop-shadow(0 0 6px rgba(39,208,122,.35))}
+.brand .wm{font-size:14px;font-weight:700;letter-spacing:.4px;color:var(--txt)}
+.brand .wm b{color:var(--green)}
+.danger .brand .peng{filter:drop-shadow(0 0 6px rgba(255,59,59,.35))}
+.danger .brand .wm b{color:var(--red)}
+
+/* theme + language toggles */
+.toggles{margin-left:auto;display:flex;align-items:center;gap:14px;flex:0 0 auto}
+.themetog,.langtog{display:flex;align-items:center;gap:3px;font-size:11px;letter-spacing:1px}
+.themetog button,.langtog button{all:unset;cursor:pointer;color:var(--muted);padding:2px 7px;border-radius:6px;transition:.15s}
+.themetog button:hover,.langtog button:hover{color:var(--txt)}
+.themetog button.on,.langtog button.on{color:var(--green);background:rgba(39,208,122,.12);text-shadow:0 0 8px rgba(39,208,122,.55)}
+.themetog .sep,.langtog .sep{color:#2a3a4a}
+.danger .themetog button.on,.danger .langtog button.on{color:var(--red);background:rgba(255,59,59,.12);text-shadow:0 0 8px rgba(255,59,59,.55)}
 
 /* cipher / decipher overlay */
 .cipherfx{position:absolute;inset:0;z-index:9;display:none;flex-direction:column;
@@ -128,3 +139,78 @@ pre{background:rgba(5,9,15,.9);border:1px solid var(--line);border-radius:10px;p
 .foot b{color:var(--green)} .foot .c{color:var(--cyan)}
 a{color:var(--cyan)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+
+/* ============================================================
+   PRO MODE — sober, professional, mostly static. For sharing
+   secrets with companies/colleagues. Light theme, no 3D/matrix/
+   glitch/neon, minimal motion.
+   ============================================================ */
+[data-theme="pro"]{
+  --bg:#eef1f5; --panel:#ffffff; --line:#dfe3ea;
+  --txt:#1f2733; --muted:#6b7480; --green:#2563eb; --red:#dc2626;
+  --cyan:#2563eb; --amber:#b45309;
+  color-scheme:light;
+}
+[data-theme="pro"] body{
+  font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg);overflow:auto}
+/* kill the scenery */
+[data-theme="pro"] #three,
+[data-theme="pro"] #matrix,
+[data-theme="pro"] .scanlines,
+[data-theme="pro"] .vignette{display:none}
+/* terminal chrome off */
+[data-theme="pro"] .bar .dot,
+[data-theme="pro"] .bar .path{display:none}
+[data-theme="pro"] .brand{margin-left:0}
+[data-theme="pro"] .brand .peng{background-image:url(/web/penguin-ink.png);filter:none}
+[data-theme="pro"] .brand .wm{color:var(--txt)}
+[data-theme="pro"] .brand .wm b{color:var(--green)}
+/* clean card */
+[data-theme="pro"] .panel{
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  backdrop-filter:none;box-shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.08);
+  animation:none}
+[data-theme="pro"] .panel.danger{border-color:#f1c4c4;box-shadow:0 8px 24px rgba(220,38,38,.08)}
+/* title: plain, no glitch */
+[data-theme="pro"] .glitch{color:var(--txt);font-weight:700;font-size:24px;letter-spacing:.2px;animation:none}
+[data-theme="pro"] .glitch::before,
+[data-theme="pro"] .glitch::after{display:none}
+[data-theme="pro"] .glitch b,
+[data-theme="pro"] .glitch span{color:var(--green)!important}
+[data-theme="pro"] .cursor::after{display:none}
+[data-theme="pro"] .sub{color:var(--muted)}
+/* inputs */
+[data-theme="pro"] textarea,
+[data-theme="pro"] select,
+[data-theme="pro"] input{background:#fff;border:1px solid var(--line);color:var(--txt)}
+[data-theme="pro"] textarea:focus,
+[data-theme="pro"] select:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(37,99,235,.18)}
+[data-theme="pro"] .linkbox input{color:var(--green)}
+/* buttons: solid, calm, no shimmer/glow */
+[data-theme="pro"] .btn{
+  background:var(--green);color:#fff;border:1px solid var(--green);
+  text-transform:none;letter-spacing:.2px;font-weight:600;box-shadow:none}
+[data-theme="pro"] .btn:hover{background:#1d4ed8;color:#fff;box-shadow:none}
+[data-theme="pro"] .btn::after{display:none}
+[data-theme="pro"] .btn.red{background:var(--red);border-color:var(--red);color:#fff}
+[data-theme="pro"] .btn.red:hover{background:#b91c1c;color:#fff}
+[data-theme="pro"] .btn.ghost{background:transparent;border-color:var(--line);color:var(--muted)}
+[data-theme="pro"] .btn.ghost:hover{background:#f3f5f8;color:var(--txt)}
+/* misc */
+[data-theme="pro"] .err,[data-theme="pro"] .gone{color:var(--red);text-shadow:none}
+[data-theme="pro"] pre{background:#f4f6f9;border:1px solid var(--line);color:#111827;text-shadow:none}
+[data-theme="pro"] .warn{background:#fff8ec;border:1px solid #f1d9a8;color:#92500e}
+[data-theme="pro"] .foot{color:var(--muted);border-top-color:var(--line)}
+[data-theme="pro"] .foot b{color:var(--txt)}
+[data-theme="pro"] .foot .c{color:var(--green)}
+[data-theme="pro"] .themetog button.on,
+[data-theme="pro"] .langtog button.on{color:var(--green);background:rgba(37,99,235,.12);text-shadow:none}
+[data-theme="pro"] .themetog .sep,[data-theme="pro"] .langtog .sep{color:#c4ccd6}
+/* cipher overlay: just a label + progress bar, no glyph noise/scan beam */
+[data-theme="pro"] .cipherfx{background:rgba(255,255,255,.96);backdrop-filter:none}
+[data-theme="pro"] .cipherfx pre{display:none}
+[data-theme="pro"] .cipherfx::after{display:none}
+[data-theme="pro"] .cipherfx .lbl{color:var(--green);text-shadow:none;letter-spacing:1px;font-weight:600;animation:none}
+[data-theme="pro"] .cipherfx .pbar{background:#e6eaf0}
+[data-theme="pro"] .cipherfx .pbar i{background:var(--green);box-shadow:none}

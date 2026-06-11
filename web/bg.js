@@ -13,7 +13,7 @@ export function initVault(canvas, { accent = NEON } = {}) {
     renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
   } catch (e) {
     canvas.style.display = "none";
-    return { pulse() {}, setDanger() {} };
+    return { pulse() {}, setDanger() {}, setSafe() {}, setActive() {} };
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
@@ -83,7 +83,7 @@ export function initVault(canvas, { accent = NEON } = {}) {
   window.addEventListener("resize", resize);
   resize();
 
-  let pulse = 0;
+  let pulse = 0, active = true, rafId = 0;
   const clock = new THREE.Clock();
   function frame() {
     const dt = clock.getDelta();
@@ -104,9 +104,16 @@ export function initVault(canvas, { accent = NEON } = {}) {
     camera.lookAt(0, 0, 0);
     pulse *= 0.92;
     renderer.render(scene, camera);
-    requestAnimationFrame(frame);
+    rafId = requestAnimationFrame(frame);
+  }
+  // Pro mode pauses the whole render loop (sober UI, no wasted GPU).
+  function setActive(on) {
+    if (on === active) return;
+    active = on;
+    if (on) { clock.getDelta(); frame(); } else { cancelAnimationFrame(rafId); }
   }
   frame();
+  if (window.THEME && window.THEME.pro) setActive(false);
 
   function setColor(hex) {
     shell.material.color.setHex(hex);
@@ -119,5 +126,6 @@ export function initVault(canvas, { accent = NEON } = {}) {
     pulse() { pulse = 1; },
     setDanger() { setColor(DANGER); },
     setSafe() { setColor(accent); },
+    setActive,
   };
 }

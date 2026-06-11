@@ -35,9 +35,19 @@ browser ──GET──▶ Go ──GETDEL──▶ Redis ──ciphertext──
 - `main.go` — HTTP API + embedded static UI (`go:embed`). Tiny.
 - `store.go` — the only thing that talks to Redis (`SetNX` + `GetDel` + `TTL`).
 - `web/` — UI: `bg.js` (Three.js 3D vault-core), `matrix.js` (digital rain),
-  `crypto.js` (WebCrypto), `fx.css` (CRT/glitch theme), `index.html`, `view.html`.
+  `crypto.js` (WebCrypto), `anim.js` (cipher/decipher effects), `i18n.js` (ES/EN),
+  `theme.js` (UI mode), `fx.css`, `index.html`, `view.html`.
 - `web/vendor/three.module.min.js` — Three.js vendored locally **on purpose**: a
   secrets tool shouldn't pull JS from a third-party CDN that could watch its users.
+
+### UI modes & language
+
+- **Hacker** (default): 3D vault background, matrix rain, glitch, neon, cipher/decipher
+  animations. **Pro**: sober, mostly-static light theme for sharing with companies —
+  effects are paused, not just hidden. Toggle in the header; choice persists, and
+  `?theme=pro` (or `hacker`) pins it via URL.
+- **ES/EN** toggle (Spanish default), persisted. Branding: VT Security penguin lockup
+  (off-white on dark, ink on light).
 
 ## Run it (local dev)
 

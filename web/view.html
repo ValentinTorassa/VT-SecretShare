@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VT-SecretShare // descifrando transmisión</title>
+<link rel="icon" href="/web/penguin-ink.png">
 <link rel="stylesheet" href="/web/fx.css">
 <script type="importmap">
 { "imports": { "three": "/web/vendor/three.module.min.js" } }
@@ -19,9 +20,14 @@
   <div class="panel danger" id="panel">
     <div class="bar">
       <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
-      <span class="path">incoming::transmission</span>
-      <span class="langtog">
-        <button data-lang="es">ES</button><span class="sep">/</span><button data-lang="en">EN</button>
+      <span class="brand"><span class="peng"></span><span class="wm"><b>VT</b> Security</span></span>
+      <span class="toggles">
+        <span class="themetog">
+          <button data-theme-set="hacker">HACKER</button><span class="sep">/</span><button data-theme-set="pro">PRO</button>
+        </span>
+        <span class="langtog">
+          <button data-lang="es">ES</button><span class="sep">/</span><button data-lang="en">EN</button>
+        </span>
       </span>
     </div>
 
@@ -60,6 +66,7 @@
 </script>
 <script src="/web/matrix.js"></script>
 <script src="/web/i18n.js"></script>
+<script src="/web/theme.js"></script>
 <script src="/web/anim.js"></script>
 <script src="/web/crypto.js"></script>
 <script>
@@ -69,10 +76,12 @@ const keyFragment = location.hash.slice(1);
 
 let typeToken = 0;
 function startType(text){
+  if (window.THEME && THEME.pro) { $("#typed").textContent = text; return; }
   const my = ++typeToken; let i = 0;
   (function tick(){ if(my!==typeToken) return; if(i<=text.length){ $("#typed").textContent = text.slice(0,i++); setTimeout(tick, 30);} })();
 }
 VT.onChange(() => startType(VT.t("typed_view")));
+THEME.onChange(() => startType(VT.t("typed_view")));
 
 if (!keyFragment) {
   $("#ready").style.display = "none";
@@ -101,7 +110,8 @@ $("#reveal").addEventListener("click", async () => {
     $("#secretbox").classList.add("show");
     window.__vault && (window.__vault.setSafe(), window.__vault.pulse());
     document.getElementById("panel").classList.remove("danger");
-    await VTAnim.scrambleReveal($("#plain"), plain, 1300);              // "decode" the secret
+    if (window.THEME && THEME.pro) $("#plain").textContent = plain;     // sober: no scramble
+    else await VTAnim.scrambleReveal($("#plain"), plain, 1300);         // "decode" the secret
   } catch (e) {
     $("#cipherfx").classList.remove("show");
     $("#ready").style.display = "none";

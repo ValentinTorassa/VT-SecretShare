@@ -16,6 +16,7 @@
   window.addEventListener("resize", resize);
   resize();
 
+  let active = true, rafId = 0;
   function draw() {
     ctx.fillStyle = "rgba(5,7,12,0.10)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -30,7 +31,15 @@
       if (y > canvas.height && Math.random() > 0.975) drops[i] = 0;
       drops[i] += 0.5;
     }
-    requestAnimationFrame(draw);
+    rafId = requestAnimationFrame(draw);
   }
+  // Pro mode stops the rain.
+  function setActive(on) {
+    if (on === active) return;
+    active = on;
+    if (on) draw(); else cancelAnimationFrame(rafId);
+  }
+  window.__matrix = { setActive };
   draw();
+  if (window.THEME && window.THEME.pro) setActive(false);
 })();
