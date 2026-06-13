@@ -16,8 +16,11 @@
   window.addEventListener("resize", resize);
   resize();
 
-  let active = true, rafId = 0;
-  function draw() {
+  let active = true, rafId = 0, lastDraw = 0;
+  function draw(now) {
+    if (!active) return;
+    if (now - lastDraw < 50) { rafId = requestAnimationFrame(draw); return; } // ~20 fps
+    lastDraw = now;
     ctx.fillStyle = "rgba(5,7,12,0.10)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.font = fontSize + "px monospace";
@@ -25,7 +28,6 @@
       const ch = glyphs[(Math.random() * glyphs.length) | 0];
       const x = i * fontSize;
       const y = drops[i] * fontSize;
-      // bright leading glyph, dim trail
       ctx.fillStyle = Math.random() > 0.975 ? "#aaffcc" : "#27d07a";
       ctx.fillText(ch, x, y);
       if (y > canvas.height && Math.random() > 0.975) drops[i] = 0;
@@ -37,9 +39,9 @@
   function setActive(on) {
     if (on === active) return;
     active = on;
-    if (on) draw(); else cancelAnimationFrame(rafId);
+    if (on) draw(performance.now()); else cancelAnimationFrame(rafId);
   }
   window.__matrix = { setActive };
-  draw();
+  draw(0);
   if (window.THEME && window.THEME.pro) setActive(false);
 })();

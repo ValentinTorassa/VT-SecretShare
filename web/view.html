@@ -3,12 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Zero-knowledge one-time secret sharing. Encrypted in your browser, self-destructs after a single read.">
 <title>VT-SecretShare // descifrando transmisión</title>
 <link rel="icon" href="/web/penguin-ink.png">
+<link rel="preload" href="/web/fx.css" as="style">
 <link rel="stylesheet" href="/web/fx.css">
 <script type="importmap">
 { "imports": { "three": "/web/vendor/three.module.min.js" } }
 </script>
+<style>.sub{min-height:1.4em}.gone{min-height:1.4em}</style>
 </head>
 <body>
 <canvas id="three"></canvas>
@@ -60,9 +63,9 @@
 
 <script type="module">
   import { initVault } from "/web/bg.js";
-  const v = initVault(document.getElementById("three"));
-  v.setDanger();
-  window.__vault = v;
+  const canvas = document.getElementById("three");
+  if (window.THEME && window.THEME.pro) { canvas.style.display = "none"; window.__vault = { pulse() {}, setDanger() {}, setSafe() {}, setActive() {} }; }
+  else { const v = initVault(canvas); v.setDanger(); window.__vault = v; }
 </script>
 <script src="/web/matrix.js"></script>
 <script src="/web/i18n.js"></script>

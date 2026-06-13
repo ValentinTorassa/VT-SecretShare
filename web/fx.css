@@ -92,7 +92,7 @@ body{
 .glitch::after{color:var(--cyan);transform:translate(-2px,0);animation:gl2 3.1s infinite steps(2)}
 @keyframes gl1{0%,92%,100%{clip-path:inset(0 0 100% 0)}93%{clip-path:inset(10% 0 60% 0)}96%{clip-path:inset(50% 0 20% 0)}}
 @keyframes gl2{0%,90%,100%{clip-path:inset(100% 0 0 0)}91%{clip-path:inset(70% 0 10% 0)}95%{clip-path:inset(20% 0 55% 0)}}
-.sub{color:var(--muted);font-size:13px;margin:6px 0 22px}
+.sub{color:var(--muted);font-size:13px;margin:6px 0 22px;min-height:1.4em}
 .sub .tag{color:var(--green)}
 .cursor::after{content:"▋";color:var(--green);animation:blink 1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
@@ -122,7 +122,7 @@ select{appearance:none;cursor:pointer}
 .btn.ghost:hover{color:var(--txt);background:rgba(255,255,255,.06);box-shadow:none}
 
 /* result / link box */
-.result{margin-top:22px;display:none}
+.result{margin-top:22px;display:none;min-height:0}
 .result.show{display:block;animation:rise .4s both}
 .linkbox{display:flex;gap:8px;margin-top:8px}
 .linkbox input{font-size:13px;color:var(--cyan);border-color:#13404a}

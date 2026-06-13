@@ -36,7 +36,7 @@ export function initVault(canvas, { accent = NEON } = {}) {
 
   // A second, larger counter-rotating ring of edges for depth.
   const ring = new THREE.LineSegments(
-    new THREE.WireframeGeometry(new THREE.TorusGeometry(4.6, 0.05, 8, 60)),
+    new THREE.WireframeGeometry(new THREE.TorusGeometry(4.6, 0.05, 8, 30)),
     new THREE.LineBasicMaterial({ color: accent, transparent: true, opacity: 0.4 })
   );
   scene.add(ring);
@@ -49,7 +49,7 @@ export function initVault(canvas, { accent = NEON } = {}) {
   core.add(inner);
 
   // Drifting particle field.
-  const COUNT = 2200;
+  const COUNT = 800;
   const positions = new Float32Array(COUNT * 3);
   for (let i = 0; i < COUNT; i++) {
     const r = 4.5 + Math.random() * 22;
@@ -83,10 +83,13 @@ export function initVault(canvas, { accent = NEON } = {}) {
   window.addEventListener("resize", resize);
   resize();
 
-  let pulse = 0, active = true, rafId = 0;
+  let pulse = 0, active = true, rafId = 0, lastFrame = 0;
   const clock = new THREE.Clock();
-  function frame() {
-    const dt = clock.getDelta();
+  function frame(now) {
+    if (!active) return;
+    if (now - lastFrame < 33) { rafId = requestAnimationFrame(frame); return; } // ~30 fps
+    lastFrame = now;
+    const dt = Math.min(clock.getDelta(), 0.1);
     const t = clock.elapsedTime;
     core.rotation.x += dt * 0.12;
     core.rotation.y += dt * 0.18;
@@ -94,11 +97,9 @@ export function initVault(canvas, { accent = NEON } = {}) {
     ring.rotation.z = -t * 0.35;
     ring.scale.setScalar(1 + pulse * 0.5);
     particles.rotation.y -= dt * 0.03;
-    // glitchy scale jitter on the inner core
     const j = 1 + Math.sin(t * 7.0) * 0.02 + pulse * 0.6;
     inner.scale.setScalar(j);
     shell.material.opacity = 0.45 + Math.abs(Math.sin(t * 1.3)) * 0.2 + pulse * 0.4;
-    // ease camera toward mouse
     camera.position.x += (mouse.x * 1.6 - camera.position.x) * 0.04;
     camera.position.y += (-mouse.y * 1.6 - camera.position.y) * 0.04;
     camera.lookAt(0, 0, 0);
@@ -110,9 +111,9 @@ export function initVault(canvas, { accent = NEON } = {}) {
   function setActive(on) {
     if (on === active) return;
     active = on;
-    if (on) { clock.getDelta(); frame(); } else { cancelAnimationFrame(rafId); }
+    if (on) { clock.getDelta(); frame(performance.now()); } else { cancelAnimationFrame(rafId); }
   }
-  frame();
+  frame(0);
   if (window.THEME && window.THEME.pro) setActive(false);
 
   function setColor(hex) {

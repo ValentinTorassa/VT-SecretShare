@@ -224,11 +224,17 @@ func (s *server) servePage(name string) http.HandlerFunc {
 
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// No referrer => the #fragment key can't leak via Referer headers.
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("Cache-Control", "no-store")
+		// Static assets are embedded and versioned by build — cache aggressively.
+		// HTML pages and API responses must not be cached (zero-knowledge ensures
+		// nothing sensitive is there, but stale UI or error pages are confusing).
+		if strings.HasPrefix(r.URL.Path, "/web/") {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		} else {
+			w.Header().Set("Cache-Control", "no-store")
+		}
 		next.ServeHTTP(w, r)
 	})
 }
