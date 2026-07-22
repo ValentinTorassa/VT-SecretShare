@@ -8,7 +8,7 @@
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
-  margin:0;background:var(--bg);color:var(--txt);overflow:hidden;
+  margin:0;background:var(--bg);color:var(--txt);overflow-x:hidden;overflow-y:auto;
   font:15px/1.55 ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
 }
 /* background layers */

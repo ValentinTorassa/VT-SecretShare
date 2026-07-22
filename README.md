@@ -26,9 +26,9 @@ for a video.
 
 ```
 browser ──(AES-256-GCM encrypt)──▶ ciphertext ──POST──▶ Go ──SET..EX──▶ Redis
-share link = /s/{id}#{key}        (key stays in the #fragment, client-side only)
+share link = /s/{id}?theme=pro&lang=en#{key}  (preferences in query, key in fragment)
 
-browser ──GET──▶ Go ──GETDEL──▶ Redis ──ciphertext──▶ browser ──(decrypt with #key)──▶ secret
+browser ──POST──▶ Go ──GETDEL──▶ Redis ──ciphertext──▶ browser ──(decrypt with #key)──▶ secret
                          ▲ key is deleted in the same atomic op
 ```
 
@@ -46,8 +46,9 @@ browser ──GET──▶ Go ──GETDEL──▶ Redis ──ciphertext──
   animations. **Pro**: sober, mostly-static light theme for sharing with companies —
   effects are paused, not just hidden. Toggle in the header; choice persists, and
   `?theme=pro` (or `hacker`) pins it via URL.
-- **ES/EN** toggle (Spanish default), persisted. Branding: VT Security penguin lockup
-  (off-white on dark, ink on light).
+- **ES/EN** toggle (Spanish default), persisted. Generated links include both the
+  selected mode and language, so receivers open the intended UI. Branding: VT
+  Security penguin lockup (off-white on dark, ink on light).
 
 ## Run it (local dev)
 
@@ -73,14 +74,18 @@ On valenpi behind Tailscale, set `BASE_URL` so the generated links point at the
 reachable host:
 
 ```bash
-BASE_URL=http://valenpi.tail1dbe79.ts.net:8080 docker compose up --build
+APP_PORT=8081 BASE_URL=https://secretshare.example.com docker compose up --build
 ```
+
+Remote deployments must use HTTPS because browser WebCrypto is unavailable on
+insecure origins (except `localhost`).
 
 ## Config (env)
 
 | Var | Default | Meaning |
 | --- | --- | --- |
 | `PORT` | `8080` | listen port |
+| `APP_PORT` | `8080` | host port published by Docker Compose |
 | `REDIS_ADDR` | `127.0.0.1:6379` | redis address |
 | `REDIS_PASSWORD` | _(empty)_ | redis auth |
 | `BASE_URL` | `http://localhost:$PORT` | used to build share links |
@@ -92,8 +97,8 @@ BASE_URL=http://valenpi.tail1dbe79.ts.net:8080 docker compose up --build
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| `POST` | `/api/secret` | body `{ciphertext, ttl_seconds?}` → `{id, ttl_seconds, expires_at}` |
-| `GET` | `/api/secret/{id}` | **burns** it (GETDEL) → `{ciphertext}` or 404 |
+| `POST` | `/api/secret` | body `{ciphertext, ttl_seconds?}` → `{id, share_url, ttl_seconds, expires_at}` |
+| `POST` | `/api/secret/{id}/reveal` | header `X-VT-Reveal: 1`; **burns** it (GETDEL) → `{ciphertext}` or 404 |
 | `GET` | `/api/secret/{id}/meta` | TTL/alive without burning |
 | `GET` | `/healthz` | pings Redis |
 

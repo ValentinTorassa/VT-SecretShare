@@ -6,6 +6,7 @@
 <meta name="description" content="Zero-knowledge one-time secret sharing. Encrypted in your browser, self-destructs after a single read.">
 <title>VT-SecretShare // transmisión cifrada</title>
 <link rel="icon" href="/web/penguin-ink.png">
+<script src="/web/theme.js"></script>
 <link rel="stylesheet" href="/web/fx.css">
 <script type="importmap">
 { "imports": { "three": "/web/vendor/three.module.min.js" } }
@@ -70,17 +71,30 @@
   </div>
 </div>
 
-<script type="module">
-  import { initVault } from "/web/bg.js";
-  const canvas = document.getElementById("three");
-  if (window.THEME && window.THEME.pro) { canvas.style.display = "none"; }
-  else { window.__vault = initVault(canvas); }
-</script>
 <script src="/web/matrix.js"></script>
 <script src="/web/i18n.js"></script>
-<script src="/web/theme.js"></script>
 <script src="/web/anim.js"></script>
 <script src="/web/crypto.js"></script>
+<script src="/web/clipboard.js"></script>
+<script type="module">
+  const canvas = document.getElementById("three");
+  let vault;
+  let loading;
+  async function syncVault() {
+    if (window.THEME.pro) {
+      canvas.style.display = "none";
+      vault?.setActive(false);
+      return;
+    }
+    canvas.style.display = "";
+    loading ??= import("/web/bg.js").then(({ initVault }) => initVault(canvas));
+    vault = await loading;
+    window.__vault = vault;
+    vault.setActive(!window.THEME.pro);
+  }
+  window.THEME.onChange(syncVault);
+  syncVault();
+</script>
 <script>
 const $ = s => document.querySelector(s);
 
@@ -102,11 +116,14 @@ $("#create").addEventListener("click", async () => {
   $("#create").disabled = true;
   $("#create").textContent = VT.t("btn_create_busy");
 
-  // show the encrypt animation
-  $("#cipherlbl").textContent = VT.t("cipher_label");
-  $("#cipherfx").classList.add("show");
-  window.__vault && window.__vault.pulse();
-  const animDone = new Promise(r => VTAnim.cipherStream($("#cipherstream"), $("#cipherbar"), 1300, r));
+  const effectsEnabled = !THEME.pro && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let animDone = Promise.resolve();
+  if (effectsEnabled) {
+    $("#cipherlbl").textContent = VT.t("cipher_label");
+    $("#cipherfx").classList.add("show");
+    window.__vault?.pulse();
+    animDone = new Promise(r => VTAnim.cipherStream($("#cipherstream"), $("#cipherbar"), 1300, r));
+  }
 
   try {
     const { ciphertext, keyFragment } = await vtEncrypt(secret);   // key stays in-browser
@@ -122,8 +139,11 @@ $("#create").addEventListener("click", async () => {
     await animDone;                          // let the animation finish for effect
     $("#cipherfx").classList.remove("show");
 
-    const url = `${location.origin}/s/${data.id}#${keyFragment}`;
-    $("#link").value = url;
+    const url = new URL(data.share_url || `/s/${data.id}`, location.origin);
+    url.searchParams.set("theme", THEME.val);
+    url.searchParams.set("lang", VT.lang);
+    url.hash = keyFragment;
+    $("#link").value = url.href;
     $("#meta").innerHTML = `${VT.t("meta_pre")}<span style="color:var(--cyan)">${new Date(data.expires_at).toLocaleString()}</span>${VT.t("meta_post")}`;
     $("#result").classList.add("show");
     $("#secret").value = "";
@@ -137,10 +157,14 @@ $("#create").addEventListener("click", async () => {
   }
 });
 
-$("#copy").addEventListener("click", () => {
-  const el = $("#link"); el.select();
-  navigator.clipboard?.writeText(el.value);
-  $("#copy").textContent = VT.t("copied"); setTimeout(()=>$("#copy").textContent = VT.t("btn_copy"), 1200);
+$("#copy").addEventListener("click", async () => {
+  try {
+    await vtCopyText($("#link").value);
+    $("#copy").textContent = VT.t("copied");
+  } catch (_) {
+    $("#copy").textContent = VT.t("copy_failed");
+  }
+  setTimeout(() => $("#copy").textContent = VT.t("btn_copy"), 1200);
 });
 </script>
 </body>

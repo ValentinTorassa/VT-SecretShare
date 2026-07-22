@@ -1,6 +1,12 @@
 // Minimal ES/EN i18n. Strings tagged with data-i18n / data-i18n-ph /
 // data-i18n-html are swapped in place; dynamic strings are read via VT.t().
-// Choice persists in localStorage. Default ES (the channel's audience).
+// Choice persists in localStorage. A valid ?lang= query pins the receiver's
+// initial language so shared links render exactly as the sender intended.
+const _langQP = new URLSearchParams(location.search).get("lang");
+const _initialLang = (_langQP === "es" || _langQP === "en")
+  ? _langQP
+  : (localStorage.getItem("vt_lang") || "es");
+
 const DICT = {
   es: {
     typed_index: "el server nunca ve tu secreto. .env no es seguridad.",
@@ -29,9 +35,11 @@ const DICT = {
     label_decrypted: "// payload descifrado — ya borrado del servidor",
     btn_copy_full: "copiar al portapapeles",
     copied_full: "✓ copiado",
+    copy_failed: "error al copiar",
     btn_create_own: "crear mi propio secreto →",
     foot_view: "el servidor entregó texto cifrado y lo borró en el mismo instante (<span class='c'>GETDEL</span>). el descifrado AES-256 pasó <b>en tu navegador</b> con la clave del <span class='c'>#fragmento</span>. — VT Security",
     err_link_incomplete: "[error] link incompleto: falta la clave (#…). Pedí el link completo.",
+    err_key_invalid: "[error] link inválido: la clave del #fragmento no es válida.",
     err_prefix: "[error] ",
     gone_prefix: "[gone] ",
   },
@@ -62,16 +70,18 @@ const DICT = {
     label_decrypted: "// decrypted payload — already deleted from server",
     btn_copy_full: "copy to clipboard",
     copied_full: "✓ copied",
+    copy_failed: "copy failed",
     btn_create_own: "create my own secret →",
     foot_view: "the server handed over ciphertext and deleted it in the same instant (<span class='c'>GETDEL</span>). AES-256 decryption happened <b>in your browser</b> with the key from the <span class='c'>#fragment</span>. — VT Security",
     err_link_incomplete: "[error] incomplete link: missing key (#…). Ask for the full link.",
+    err_key_invalid: "[error] invalid link: the key in the #fragment is malformed.",
     err_prefix: "[error] ",
     gone_prefix: "[gone] ",
   },
 };
 
 const VT = {
-  lang: localStorage.getItem("vt_lang") || "es",
+  lang: _initialLang,
   listeners: [],
   t(k) { return (DICT[this.lang] && DICT[this.lang][k]) ?? DICT.es[k] ?? k; },
   apply() {
@@ -87,9 +97,8 @@ const VT = {
 };
 window.VT = VT;
 
-document.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll("[data-lang]").forEach((b) =>
-    b.addEventListener("click", () => VT.set(b.dataset.lang))
-  );
-  VT.apply();
-});
+if (_langQP === "es" || _langQP === "en") localStorage.setItem("vt_lang", _langQP);
+document.querySelectorAll("[data-lang]").forEach((b) =>
+  b.addEventListener("click", () => VT.set(b.dataset.lang))
+);
+VT.apply();

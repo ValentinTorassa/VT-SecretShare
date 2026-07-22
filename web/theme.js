@@ -21,6 +21,7 @@ const THEME = {
   onChange(fn) { this.listeners.push(fn); },
 };
 window.THEME = THEME;
+document.documentElement.dataset.theme = THEME.val;
 
 document.addEventListener("DOMContentLoaded", () => {
   if (_qp === "pro" || _qp === "hacker") localStorage.setItem("vt_theme", _qp);

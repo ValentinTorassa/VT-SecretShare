@@ -73,7 +73,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/secret", s.handleCreate)
-	mux.HandleFunc("GET /api/secret/{id}", s.handleBurn)
+	mux.HandleFunc("POST /api/secret/{id}/reveal", s.handleBurn)
 	mux.HandleFunc("GET /api/secret/{id}/meta", s.handleMeta)
 	mux.HandleFunc("GET /healthz", s.handleHealth)
 	mux.HandleFunc("GET /s/{id}", s.servePage("web/view.html"))
@@ -98,6 +98,7 @@ type createRequest struct {
 
 type createResponse struct {
 	ID         string `json:"id"`
+	ShareURL   string `json:"share_url"`
 	TTLSeconds int    `json:"ttl_seconds"`
 	ExpiresAt  string `json:"expires_at"`
 }
@@ -127,7 +128,15 @@ func (s *server) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	ttl := s.cfg.defaultTTL
 	if req.TTLSeconds > 0 {
-		ttl = time.Duration(req.TTLSeconds) * time.Second
+		ttlSeconds := req.TTLSeconds
+		maxTTLSeconds := int(s.cfg.maxTTL / time.Second)
+		if ttlSeconds > maxTTLSeconds {
+			ttlSeconds = maxTTLSeconds
+		}
+		if ttlSeconds < int(time.Minute/time.Second) {
+			ttlSeconds = int(time.Minute / time.Second)
+		}
+		ttl = time.Duration(ttlSeconds) * time.Second
 	}
 	if ttl > s.cfg.maxTTL {
 		ttl = s.cfg.maxTTL
@@ -154,16 +163,19 @@ func (s *server) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusCreated, createResponse{
 		ID:         id,
+		ShareURL:   s.cfg.baseURL + "/s/" + id,
 		TTLSeconds: int(ttl.Seconds()),
 		ExpiresAt:  time.Now().UTC().Add(ttl).Format(time.RFC3339),
 	})
 }
 
-// handleBurn reads-and-deletes. This is the destructive endpoint: it must only
-// be hit on an explicit user action, never by link-preview crawlers, or the
-// secret gets consumed before the human sees it. The front-end gates it behind
-// a button click for exactly that reason.
+// handleBurn reads-and-deletes. POST plus a custom header prevents link previews
+// and cross-origin simple requests from consuming the secret.
 func (s *server) handleBurn(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("X-VT-Reveal") != "1" {
+		writeErr(w, http.StatusForbidden, "explicit reveal required")
+		return
+	}
 	id := r.PathValue("id")
 	ciphertext, err := s.store.Burn(r.Context(), id)
 	if err != nil {
@@ -193,9 +205,9 @@ func (s *server) handleMeta(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"alive":           true,
-		"ttl_seconds":     int(ttl.Seconds()),
-		"expires_at":      time.Now().UTC().Add(ttl).Format(time.RFC3339),
+		"alive":       true,
+		"ttl_seconds": int(ttl.Seconds()),
+		"expires_at":  time.Now().UTC().Add(ttl).Format(time.RFC3339),
 	})
 }
 

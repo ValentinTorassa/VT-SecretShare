@@ -24,6 +24,12 @@ function b64urlToBytes(str) {
   return b64ToBytes(str);
 }
 
+function vtValidKeyFragment(keyFragment) {
+  if (!/^[A-Za-z0-9_-]{43}$/.test(keyFragment)) return false;
+  try { return b64urlToBytes(keyFragment).length === 32; }
+  catch (_) { return false; }
+}
+
 // vtEncrypt -> { ciphertext (base64), keyFragment (base64url) }
 async function vtEncrypt(plaintext) {
   const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
