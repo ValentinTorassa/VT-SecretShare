@@ -110,3 +110,13 @@ insecure origins (except `localhost`).
   secrets never hit disk.
 - Possible next steps: optional passphrase (extra PBKDF2 layer), rate limiting on
   `POST /api/secret`, a `/metrics` endpoint, and a CSP without `unsafe-inline`.
+
+## Verificación de regresiones — 2026-09-14
+
+```bash
+go test -race ./...
+go build ./...
+node --test tests/*.test.mjs
+```
+
+Redis 6.2+ debe estar disponible como `redis-server`. Cada test inicia una instancia efímera sin persistencia y con socket privado; nunca usa Redis de producción. Se verifican carrera de una lectura, expiración, colisiones y cifrado WebCrypto.
