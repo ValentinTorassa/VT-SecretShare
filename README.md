@@ -4,7 +4,7 @@ Zero-knowledge **one-time secret sharing**, self-hosted. Paste a password / toke
 API key → get a link that works **once** and then self-destructs. Built around two
 Redis commands and a fancy hacker UI.
 
-> `.env` no es seguridad. — VT Security
+> `.env` no es seguridad. - VT Security
 
 ## Why it's actually secure (the demo-worthy part)
 
@@ -12,10 +12,10 @@ Redis commands and a fancy hacker UI.
   AES-256-GCM key (WebCrypto). Only the ciphertext is sent to the server.
 - **The key never touches the server.** It lives in the URL `#fragment`, which
   browsers never send in requests. `Referrer-Policy: no-referrer` stops it leaking.
-- **One read, then gone.** The first reveal calls Redis `GETDEL` — an atomic
+- **One read, then gone.** The first reveal calls Redis `GETDEL` - an atomic
   read-and-delete. Two people racing the same link can never both win.
 - **Nothing to steal at rest.** Redis only ever holds ciphertext, with a hard TTL.
-  Dump Redis, read the logs, inspect server memory — there is no plaintext and no key.
+  Dump Redis, read the logs, inspect server memory - there is no plaintext and no key.
 
 So the entire server is basically: `SET key <ciphertext> EX <ttl>` on create,
 `GETDEL key` on read. That's the whole persistence model. Redis is doing the
@@ -32,18 +32,18 @@ browser ──POST──▶ Go ──GETDEL──▶ Redis ──ciphertext─�
                          ▲ key is deleted in the same atomic op
 ```
 
-- `main.go` — HTTP API + embedded static UI (`go:embed`). Tiny.
-- `store.go` — the only thing that talks to Redis (`SetNX` + `GetDel` + `TTL`).
-- `web/` — UI: `bg.js` (Three.js 3D vault-core), `matrix.js` (digital rain),
+- `main.go` - HTTP API + embedded static UI (`go:embed`). Tiny.
+- `store.go` - the only thing that talks to Redis (`SetNX` + `GetDel` + `TTL`).
+- `web/` - UI: `bg.js` (Three.js 3D vault-core), `matrix.js` (digital rain),
   `crypto.js` (WebCrypto), `anim.js` (cipher/decipher effects), `i18n.js` (ES/EN),
   `theme.js` (UI mode), `fx.css`, `index.html`, `view.html`.
-- `web/vendor/three.module.min.js` — Three.js vendored locally **on purpose**: a
+- `web/vendor/three.module.min.js` - Three.js vendored locally **on purpose**: a
   secrets tool shouldn't pull JS from a third-party CDN that could watch its users.
 
 ### UI modes & language
 
 - **Hacker** (default): 3D vault background, matrix rain, glitch, neon, cipher/decipher
-  animations. **Pro**: sober, mostly-static light theme for sharing with companies —
+  animations. **Pro**: sober, mostly-static light theme for sharing with companies -
   effects are paused, not just hidden. Toggle in the header; choice persists, and
   `?theme=pro` (or `hacker`) pins it via URL.
 - **ES/EN** toggle (Spanish default), persisted. Generated links include both the
@@ -111,7 +111,7 @@ insecure origins (except `localhost`).
 - Possible next steps: optional passphrase (extra PBKDF2 layer), rate limiting on
   `POST /api/secret`, a `/metrics` endpoint, and a CSP without `unsafe-inline`.
 
-## Verificación de regresiones — 2026-09-14
+## Verificación de regresiones - 2026-09-14
 
 ```bash
 go test -race ./...

@@ -1,4 +1,4 @@
-/* VT-SecretShare — hacker/CRT theme shared by both pages. */
+/* VT-SecretShare - hacker/CRT theme shared by both pages. */
 :root{
   --bg:#05070c; --panel:rgba(10,15,24,.62); --line:#1d6b48;
   --txt:#dfe7ee; --muted:#6f8aa0; --green:#27d07a; --red:#ff3b3b;
@@ -148,7 +148,7 @@ a{color:var(--cyan)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}}
 
 /* ============================================================
-   PRO MODE — sober, professional, mostly static. For sharing
+   PRO MODE - sober, professional, mostly static. For sharing
    secrets with companies/colleagues. Light theme, no 3D/matrix/
    glitch/neon, minimal motion.
    ============================================================ */

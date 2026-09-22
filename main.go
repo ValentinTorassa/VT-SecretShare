@@ -1,10 +1,10 @@
-// VT-SecretShare — zero-knowledge one-time secret sharing.
+// VT-SecretShare - zero-knowledge one-time secret sharing.
 //
 // The browser encrypts the secret with a random AES-256-GCM key (WebCrypto).
 // Only the ciphertext is POSTed here; the key lives in the URL #fragment and is
 // never transmitted to this server. We hand the ciphertext to Redis with a TTL.
 // The first GET burns it via GETDEL. The server therefore never sees plaintext,
-// never sees the key, and keeps nothing after a single read or the TTL — there
+// never sees the key, and keeps nothing after a single read or the TTL - there
 // is nothing useful to steal from process memory, logs, or a Redis dump.
 package main
 
@@ -180,7 +180,7 @@ func (s *server) handleBurn(w http.ResponseWriter, r *http.Request) {
 	ciphertext, err := s.store.Burn(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			writeErr(w, http.StatusNotFound, "this secret is gone — wrong link, expired, or already viewed")
+			writeErr(w, http.StatusNotFound, "this secret is gone - wrong link, expired, or already viewed")
 			return
 		}
 		log.Printf("burn error: %v", err)
@@ -239,7 +239,7 @@ func securityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
-		// Static assets are embedded and versioned by build — cache aggressively.
+		// Static assets are embedded and versioned by build - cache aggressively.
 		// HTML pages and API responses must not be cached (zero-knowledge ensures
 		// nothing sensitive is there, but stale UI or error pages are confusing).
 		if strings.HasPrefix(r.URL.Path, "/web/") {

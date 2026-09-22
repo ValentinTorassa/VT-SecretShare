@@ -1,4 +1,4 @@
-// 3D animated background — "The Vault Core".
+// 3D animated background - "The Vault Core".
 // A glitching wireframe icosahedron suspended in a drifting particle field.
 // Pure Three.js (vendored locally), additive neon, mouse parallax. Degrades
 // gracefully: if WebGL is unavailable the page still works, just flat.

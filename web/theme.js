@@ -1,7 +1,7 @@
 // UI mode: "hacker" (default, full 3D + animations) vs "pro" (sober, mostly
-// static — for sharing secrets with companies/colleagues). Sets a data-theme on
+// static - for sharing secrets with companies/colleagues). Sets a data-theme on
 // <html> (CSS does the visual switch) and pauses the heavy fx loops in pro mode.
-// A ?theme=pro|hacker query param overrides (and pins) the stored choice — handy
+// A ?theme=pro|hacker query param overrides (and pins) the stored choice - handy
 // for linking colleagues straight into the sober UI.
 const _qp = new URLSearchParams(location.search).get("theme");
 const THEME = {
