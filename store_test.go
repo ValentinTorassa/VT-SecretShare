@@ -37,7 +37,7 @@ func testStore(t *testing.T) *Store {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = cmd.Process.Kill(); _ = cmd.Wait() })
-	store := &Store{rdb: redis.NewClient(&redis.Options{Network: "unix", Addr: socket, MaxRetries: -1})}
+	store := newStoreWithOptions(&redis.Options{Network: "unix", Addr: socket, MaxRetries: -1})
 	t.Cleanup(func() { _ = store.Close() })
 	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); {
 		if store.Ping(context.Background()) == nil {

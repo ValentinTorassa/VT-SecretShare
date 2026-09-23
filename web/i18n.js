@@ -42,6 +42,7 @@ const DICT = {
     err_key_invalid: "[error] link inválido: la clave del #fragmento no es válida.",
     err_prefix: "[error] ",
     gone_prefix: "[gone] ",
+    err_retry_later: "demasiados intentos. El secreto sigue intacto: recargá en {s} segundos.",
   },
   en: {
     typed_index: "the server never sees your secret. .env is not security.",
@@ -77,6 +78,7 @@ const DICT = {
     err_key_invalid: "[error] invalid link: the key in the #fragment is malformed.",
     err_prefix: "[error] ",
     gone_prefix: "[gone] ",
+    err_retry_later: "too many attempts. The secret is still intact: reload in {s} seconds.",
   },
 };
 
