@@ -15,9 +15,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/netip"
 	"os"
 	"strconv"
 	"strings"
@@ -35,6 +37,14 @@ type config struct {
 	maxCipherLen  int
 	defaultTTL    time.Duration
 	maxTTL        time.Duration
+
+	// Per-client rate limits (see ratelimit.go). A limit <= 0 disables it.
+	createLimit    int
+	createWindow   time.Duration
+	readLimit      int
+	readWindow     time.Duration
+	rateLimitSalt  string
+	trustedProxies []netip.Prefix
 }
 
 func loadConfig() config {
@@ -46,16 +56,74 @@ func loadConfig() config {
 		maxCipherLen:  envInt("MAX_CIPHERTEXT_BYTES", 256*1024), // ~256 KB ciphertext
 		defaultTTL:    time.Duration(envInt("DEFAULT_TTL_SECONDS", 24*3600)) * time.Second,
 		maxTTL:        time.Duration(envInt("MAX_TTL_SECONDS", 7*24*3600)) * time.Second,
+
+		createLimit:   envInt("RATE_LIMIT_CREATE", 20),
+		createWindow:  envSeconds("RATE_LIMIT_CREATE_WINDOW_SECONDS", 600),
+		readLimit:     envInt("RATE_LIMIT_READ", 30),
+		readWindow:    envSeconds("RATE_LIMIT_READ_WINDOW_SECONDS", 600),
+		rateLimitSalt: os.Getenv("RATE_LIMIT_SALT"),
 	}
 	if c.baseURL == "" {
 		c.baseURL = "http://localhost:" + c.port
 	}
+	proxies, err := parseTrustedProxies(env("TRUSTED_PROXY_CIDRS", defaultTrustedProxies))
+	if err != nil {
+		log.Fatal(err)
+	}
+	c.trustedProxies = proxies
 	return c
 }
 
 type server struct {
 	cfg   config
 	store *Store
+
+	createLimiter *rateLimiter
+	readLimiter   *rateLimiter
+}
+
+func newServer(cfg config, store *Store) *server {
+	salt := []byte(cfg.rateLimitSalt)
+	if len(salt) == 0 {
+		// Without a configured salt, counter keys change on every restart, so
+		// counters reset then and are not shared between instances.
+		salt = make([]byte, 32)
+		if _, err := io.ReadFull(cryptorand.Reader, salt); err != nil {
+			log.Fatalf("cannot generate rate-limit salt: %v", err)
+		}
+	}
+	return &server{
+		cfg:   cfg,
+		store: store,
+		// Creating is not a guessing surface, and with Redis down the Save that
+		// follows fails anyway, so a limiter outage should not block anyone:
+		// fail open (with a log line).
+		createLimiter: &rateLimiter{name: "create", limit: int64(cfg.createLimit), window: cfg.createWindow, failOpen: true, store: store, salt: salt},
+		// Reading is the brute-force surface (reveal, and meta as an existence
+		// oracle). If we cannot count, we refuse rather than go silently
+		// unlimited: fail closed. It costs nothing, since the secret lives in
+		// the same Redis.
+		readLimiter: &rateLimiter{name: "read", limit: int64(cfg.readLimit), window: cfg.readWindow, failOpen: false, store: store, salt: salt},
+	}
+}
+
+func (s *server) routes() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/secret", s.rateLimited(s.createLimiter, s.handleCreate))
+	mux.HandleFunc("POST /api/secret/{id}/reveal", s.rateLimited(s.readLimiter, s.handleBurn))
+	mux.HandleFunc("GET /api/secret/{id}/meta", s.rateLimited(s.readLimiter, s.handleMeta))
+	mux.HandleFunc("GET /healthz", s.handleHealth)
+	mux.HandleFunc("GET /s/{id}", s.servePage("web/view.html"))
+	mux.HandleFunc("GET /{$}", s.servePage("web/index.html"))
+	mux.Handle("GET /web/", http.FileServerFS(webFS))
+	return securityHeaders(mux)
+}
+
+func describeLimit(n int, window time.Duration) string {
+	if n <= 0 {
+		return "off"
+	}
+	return fmt.Sprintf("%d/%s", n, window)
 }
 
 func main() {
@@ -69,23 +137,20 @@ func main() {
 	}
 	defer store.Close()
 
-	s := &server{cfg: cfg, store: store}
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("POST /api/secret", s.handleCreate)
-	mux.HandleFunc("POST /api/secret/{id}/reveal", s.handleBurn)
-	mux.HandleFunc("GET /api/secret/{id}/meta", s.handleMeta)
-	mux.HandleFunc("GET /healthz", s.handleHealth)
-	mux.HandleFunc("GET /s/{id}", s.servePage("web/view.html"))
-	mux.HandleFunc("GET /{$}", s.servePage("web/index.html"))
-	mux.Handle("GET /web/", http.FileServerFS(webFS))
+	s := newServer(cfg, store)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.port,
-		Handler:           securityHeaders(mux),
+		Handler:           s.routes(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	log.Printf("VT-SecretShare listening on %s (base url %s, redis %s)", srv.Addr, cfg.baseURL, cfg.redisAddr)
+	saltSource := "RATE_LIMIT_SALT"
+	if cfg.rateLimitSalt == "" {
+		saltSource = "random per process (counters reset on restart; set RATE_LIMIT_SALT to keep them)"
+	}
+	log.Printf("rate limits per client: create %s (fail-open), read %s (fail-closed); trusted proxies %v; key salt: %s",
+		describeLimit(cfg.createLimit, cfg.createWindow), describeLimit(cfg.readLimit, cfg.readWindow), cfg.trustedProxies, saltSource)
 	log.Fatal(srv.ListenAndServe())
 }
 
@@ -211,11 +276,18 @@ func (s *server) handleMeta(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// healthPingTimeout is how long /healthz waits for Redis to answer PING.
+// Redis is on loopback, so anything slower than this is effectively down.
+const healthPingTimeout = time.Second
+
+// handleHealth answers 200 {"status":"ok"} only when Redis answers PING within
+// healthPingTimeout, 503 otherwise. It is not rate limited; monitors poll it.
 func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), healthPingTimeout)
 	defer cancel()
 	if err := s.store.Ping(ctx); err != nil {
-		writeErr(w, http.StatusServiceUnavailable, "redis down")
+		log.Printf("healthz: redis ping failed: %v", err)
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unavailable", "error": "redis unreachable"})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -283,4 +355,13 @@ func envInt(k string, def int) int {
 		}
 	}
 	return def
+}
+
+// envSeconds reads a positive number of seconds, falling back to def.
+func envSeconds(k string, def int) time.Duration {
+	n := envInt(k, def)
+	if n <= 0 {
+		n = def
+	}
+	return time.Duration(n) * time.Second
 }

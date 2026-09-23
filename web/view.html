@@ -130,7 +130,17 @@ $("#reveal").addEventListener("click", async () => {
       method: "POST",
       headers: { "X-VT-Reveal": "1" },
     });
-    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || ("HTTP "+res.status)); }
+    if (!res.ok) {
+      const e = await res.json().catch(()=>({}));
+      // 429 (rate limit) and 503 (store unavailable) are refused before the
+      // secret is read: it is still there, so don't say "[gone]".
+      if (res.status === 429 || res.status === 503) {
+        const err = new Error(VT.t("err_retry_later").replace("{s}", res.headers.get("Retry-After") || "60"));
+        err.retryable = true;
+        throw err;
+      }
+      throw new Error(e.error || ("HTTP "+res.status));
+    }
     const { ciphertext } = await res.json();
     revealedPlaintext = await vtDecrypt(ciphertext, keyFragment);       // decrypt in-browser
 
@@ -147,7 +157,7 @@ $("#reveal").addEventListener("click", async () => {
   } catch (e) {
     $("#cipherfx").classList.remove("show");
     $("#ready").style.display = "none";
-    $("#gone").textContent = VT.t("gone_prefix") + e.message;
+    $("#gone").textContent = (e.retryable ? VT.t("err_prefix") : VT.t("gone_prefix")) + e.message;
     $("#gone").classList.add("show");
   }
 });
