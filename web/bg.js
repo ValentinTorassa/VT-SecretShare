@@ -2,7 +2,7 @@
 // A glitching wireframe icosahedron suspended in a drifting particle field.
 // Pure Three.js (vendored locally), additive neon, mouse parallax. Degrades
 // gracefully: if WebGL is unavailable the page still works, just flat.
-import * as THREE from "three";
+import * as THREE from "./vendor/three.module.min.js";
 
 const NEON = 0x27d07a;   // VT green
 const DANGER = 0xff3b3b; // VT red

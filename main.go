@@ -294,10 +294,11 @@ func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) servePage(name string) http.HandlerFunc {
-	body, err := webFS.ReadFile(name)
+	page, err := webFS.ReadFile(name)
 	if err != nil {
 		log.Fatalf("missing embedded page %s: %v", name, err)
 	}
+	body := renderPage(page)
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write(body)
@@ -305,23 +306,6 @@ func (s *server) servePage(name string) http.HandlerFunc {
 }
 
 // ---- helpers ----
-
-func securityHeaders(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Referrer-Policy", "no-referrer")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("X-Frame-Options", "DENY")
-		// Static assets are embedded and versioned by build - cache aggressively.
-		// HTML pages and API responses must not be cached (zero-knowledge ensures
-		// nothing sensitive is there, but stale UI or error pages are confusing).
-		if strings.HasPrefix(r.URL.Path, "/web/") {
-			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		} else {
-			w.Header().Set("Cache-Control", "no-store")
-		}
-		next.ServeHTTP(w, r)
-	})
-}
 
 func newID() (string, error) {
 	b := make([]byte, 16) // 128 bits of entropy

@@ -6,15 +6,11 @@
 <meta name="description" content="Zero-knowledge one-time secret sharing. Encrypted in your browser, self-destructs after a single read.">
 <title>VT-SecretShare // descifrando transmisión</title>
 <link rel="icon" href="/web/penguin-ink.png">
-<script src="/web/theme.js"></script>
-<link rel="stylesheet" href="/web/fx.css">
-<script type="importmap">
-{ "imports": { "three": "/web/vendor/three.module.min.js" } }
-</script>
-<style>.sub{min-height:1.4em}.gone{min-height:1.4em}</style>
+<script src="/web/theme.js?v={{ASSET_VERSION}}"></script>
+<link rel="stylesheet" href="/web/fx.css?v={{ASSET_VERSION}}">
 </head>
 <body>
-<canvas id="three"></canvas>
+<canvas id="three" data-vault="danger"></canvas>
 <canvas id="matrix"></canvas>
 <div class="vignette"></div>
 <div class="scanlines"></div>
@@ -34,7 +30,7 @@
       </span>
     </div>
 
-    <h1 class="glitch" data-text="SECRET//IN">SECRET<span style="color:var(--red)">//IN</span></h1>
+    <h1 class="glitch" data-text="SECRET//IN">SECRET<span class="red">//IN</span></h1>
     <p class="sub"><span id="typed"></span><span class="cursor"></span></p>
 
     <div id="ready">
@@ -45,8 +41,8 @@
     <div class="secretbox" id="secretbox">
       <label data-i18n="label_decrypted"></label>
       <pre id="plain"></pre>
-      <button class="btn copy" id="copy" style="margin-top:14px;width:100%" data-i18n="btn_copy_full" disabled></button>
-      <button class="btn ghost" id="own" data-i18n="btn_create_own" onclick="location.href='/'"></button>
+      <button class="btn copy" id="copy" data-i18n="btn_copy_full" disabled></button>
+      <button class="btn ghost" id="own" data-i18n="btn_create_own"></button>
     </div>
 
     <div class="gone" id="gone"></div>
@@ -61,117 +57,12 @@
   </div>
 </div>
 
-<script src="/web/matrix.js"></script>
-<script src="/web/i18n.js"></script>
-<script src="/web/anim.js"></script>
-<script src="/web/crypto.js"></script>
-<script src="/web/clipboard.js"></script>
-<script type="module">
-  const canvas = document.getElementById("three");
-  let vault;
-  let loading;
-  async function syncVault() {
-    if (window.THEME.pro) {
-      canvas.style.display = "none";
-      vault?.setActive(false);
-      return;
-    }
-    canvas.style.display = "";
-    loading ??= import("/web/bg.js").then(({ initVault }) => {
-      const instance = initVault(canvas);
-      instance.setDanger();
-      return instance;
-    });
-    vault = await loading;
-    window.__vault = vault;
-    vault.setActive(!window.THEME.pro);
-  }
-  window.THEME.onChange(syncVault);
-  syncVault();
-</script>
-<script>
-const $ = s => document.querySelector(s);
-const id = location.pathname.split("/").pop();
-const keyFragment = location.hash.slice(1);
-let revealedPlaintext = "";
-
-let typeToken = 0;
-function startType(text){
-  if (window.THEME && THEME.pro) { $("#typed").textContent = text; return; }
-  const my = ++typeToken; let i = 0;
-  (function tick(){ if(my!==typeToken) return; if(i<=text.length){ $("#typed").textContent = text.slice(0,i++); setTimeout(tick, 30);} })();
-}
-VT.onChange(() => startType(VT.t("typed_view")));
-THEME.onChange(() => startType(VT.t("typed_view")));
-
-if (!keyFragment || !vtValidKeyFragment(keyFragment)) {
-  $("#ready").style.display = "none";
-  $("#gone").textContent = VT.t(keyFragment ? "err_key_invalid" : "err_link_incomplete");
-  $("#gone").classList.add("show");
-}
-
-$("#reveal").addEventListener("click", async () => {
-  $("#reveal").disabled = true;
-  $("#reveal").textContent = VT.t("btn_reveal_busy");
-
-  $("#copy").disabled = true;
-  const effectsEnabled = !THEME.pro && !matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let animDone = Promise.resolve();
-  if (effectsEnabled) {
-    $("#cipherlbl").textContent = VT.t("decipher_label");
-    $("#cipherfx").classList.add("show");
-    window.__vault?.pulse();
-    animDone = new Promise(r => VTAnim.cipherStream($("#cipherstream"), $("#cipherbar"), 1300, r));
-  }
-
-  try {
-    if (!vtValidKeyFragment(keyFragment)) throw new Error(VT.t("err_key_invalid"));
-    const res = await fetch(`/api/secret/${encodeURIComponent(id)}/reveal`, {
-      method: "POST",
-      headers: { "X-VT-Reveal": "1" },
-    });
-    if (!res.ok) {
-      const e = await res.json().catch(()=>({}));
-      // 429 (rate limit) and 503 (store unavailable) are refused before the
-      // secret is read: it is still there, so don't say "[gone]".
-      if (res.status === 429 || res.status === 503) {
-        const err = new Error(VT.t("err_retry_later").replace("{s}", res.headers.get("Retry-After") || "60"));
-        err.retryable = true;
-        throw err;
-      }
-      throw new Error(e.error || ("HTTP "+res.status));
-    }
-    const { ciphertext } = await res.json();
-    revealedPlaintext = await vtDecrypt(ciphertext, keyFragment);       // decrypt in-browser
-
-    await animDone;
-    $("#cipherfx").classList.remove("show");
-    $("#ready").style.display = "none";
-    $("#secretbox").classList.add("show");
-    window.__vault && (window.__vault.setSafe(), window.__vault.pulse());
-    document.getElementById("panel").classList.remove("danger");
-    if (!effectsEnabled) $("#plain").textContent = revealedPlaintext;
-    else await VTAnim.scrambleReveal($("#plain"), revealedPlaintext, 1300);
-    $("#plain").textContent = revealedPlaintext;
-    $("#copy").disabled = false;
-  } catch (e) {
-    $("#cipherfx").classList.remove("show");
-    $("#ready").style.display = "none";
-    $("#gone").textContent = (e.retryable ? VT.t("err_prefix") : VT.t("gone_prefix")) + e.message;
-    $("#gone").classList.add("show");
-  }
-});
-
-$("#copy").addEventListener("click", async () => {
-  if (!revealedPlaintext) return;
-  try {
-    await vtCopyText(revealedPlaintext);
-    $("#copy").textContent = VT.t("copied_full");
-  } catch (_) {
-    $("#copy").textContent = VT.t("copy_failed");
-  }
-  setTimeout(() => $("#copy").textContent = VT.t("btn_copy_full"), 1200);
-});
-</script>
+<script src="/web/matrix.js?v={{ASSET_VERSION}}"></script>
+<script src="/web/i18n.js?v={{ASSET_VERSION}}"></script>
+<script src="/web/anim.js?v={{ASSET_VERSION}}"></script>
+<script src="/web/crypto.js?v={{ASSET_VERSION}}"></script>
+<script src="/web/clipboard.js?v={{ASSET_VERSION}}"></script>
+<script type="module" src="/web/vault.js?v={{ASSET_VERSION}}"></script>
+<script src="/web/view.js?v={{ASSET_VERSION}}"></script>
 </body>
 </html>
