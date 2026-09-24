@@ -87,6 +87,7 @@ body{
 /* glitch title */
 .glitch{font-size:30px;font-weight:800;letter-spacing:1px;margin:0 0 2px;position:relative;color:#fff;line-height:1}
 .glitch b{color:var(--green)}
+.glitch .red{color:var(--red)}
 .glitch::before,.glitch::after{content:attr(data-text);position:absolute;left:0;top:0;width:100%;overflow:hidden;clip-path:inset(0)}
 .glitch::before{color:var(--red);transform:translate(2px,0);animation:gl1 2.6s infinite steps(2)}
 .glitch::after{color:var(--cyan);transform:translate(-2px,0);animation:gl2 3.1s infinite steps(2)}
@@ -128,6 +129,7 @@ select{appearance:none;cursor:pointer}
 .linkbox input{font-size:13px;color:var(--cyan);border-color:#13404a}
 .copy{margin:0;width:auto;padding:0 18px;flex:0 0 auto}
 .meta{color:var(--muted);font-size:12px;margin-top:12px;display:flex;gap:8px;align-items:center}
+.meta .when{color:var(--cyan)}
 .err{color:var(--red);font-size:13px;margin-top:14px;min-height:18px;text-shadow:0 0 10px rgba(255,59,59,.4)}
 
 /* reveal page */
@@ -135,10 +137,11 @@ select{appearance:none;cursor:pointer}
   margin-bottom:20px;background:rgba(255,59,59,.06)}
 .secretbox{display:none;margin-top:8px}
 .secretbox.show{display:block;animation:rise .4s both}
+.secretbox .copy{margin-top:14px;width:100%}
 pre{background:rgba(5,9,15,.9);border:1px solid var(--line);border-radius:10px;padding:18px;
   margin:8px 0 0;white-space:pre-wrap;word-break:break-all;color:var(--green);font-size:15px;
   text-shadow:0 0 12px rgba(39,208,122,.4)}
-.gone{display:none;text-align:center;color:var(--red);font-size:15px;margin-top:8px;
+.gone{display:none;text-align:center;color:var(--red);font-size:15px;margin-top:8px;min-height:1.4em;
   text-shadow:0 0 14px rgba(255,59,59,.5)}
 .gone.show{display:block;animation:rise .4s both}
 

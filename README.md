@@ -12,6 +12,9 @@ Redis commands and a fancy hacker UI.
   AES-256-GCM key (WebCrypto). Only the ciphertext is sent to the server.
 - **The key never touches the server.** It lives in the URL `#fragment`, which
   browsers never send in requests. `Referrer-Policy: no-referrer` stops it leaking.
+- **Only its own scripts run.** Any script on the view page could read the key,
+  so a strict Content-Security-Policy (`script-src 'self'`, no inline code, no
+  CDN) keeps injected markup from running. See [Security headers](#security-headers).
 - **One read, then gone.** The first reveal calls Redis `GETDEL` - an atomic
   read-and-delete. Two people racing the same link can never both win.
 - **Nothing to steal at rest.** Redis only ever holds ciphertext, with a hard TTL.
@@ -33,12 +36,15 @@ browser ──POST──▶ Go ──GETDEL──▶ Redis ──ciphertext─�
 ```
 
 - `main.go` - HTTP API + embedded static UI (`go:embed`). Tiny.
+- `headers.go` - security headers on every response, and the asset version.
 - `store.go` - the only thing that talks to Redis (`SetNX` + `GetDel` + `TTL`,
   plus the atomic rate-limit counter script).
 - `ratelimit.go` - per-client rate limiting and client-IP resolution.
-- `web/` - UI: `bg.js` (Three.js 3D vault-core), `matrix.js` (digital rain),
-  `crypto.js` (WebCrypto), `anim.js` (cipher/decipher effects), `i18n.js` (ES/EN),
-  `theme.js` (UI mode), `fx.css`, `index.html`, `view.html`.
+- `web/` - UI: `index.html` + `index.js` (create), `view.html` + `view.js`
+  (reveal), `vault.js` (loads `bg.js`, the Three.js 3D vault-core), `matrix.js`
+  (digital rain), `crypto.js` (WebCrypto), `anim.js` (cipher/decipher effects),
+  `i18n.js` (ES/EN), `theme.js` (UI mode), `clipboard.js`, `fx.css`. No inline
+  scripts or styles: the CSP would block them.
 - `web/vendor/three.module.min.js` - Three.js vendored locally **on purpose**: a
   secrets tool shouldn't pull JS from a third-party CDN that could watch its users.
 
@@ -88,8 +94,9 @@ secretshare.valentorassa.com is not the compose setup: it is the Go binary
 under a systemd unit (tracked in the private infra repo) on the same host as
 `cloudflared`, which forwards to `localhost:8081`. That is why the default
 `TRUSTED_PROXY_CIDRS` is loopback only. To update it: pull, `go test ./...`,
-build to a new file, smoke-test it on a spare port (`/healthz` → 200 and
-`/api/secret/x/meta` → 404, which also exercises the rate-limit script), keep
+build to a new file, smoke-test it on a spare port (`/healthz` → 200,
+`/api/secret/x/meta` → 404, which also exercises the rate-limit script, and
+`curl -sI /` carries the `Content-Security-Policy`), keep
 the previous binary for rollback, swap, restart the unit. Keep
 `RATE_LIMIT_SALT` in a root-owned `0600` EnvironmentFile, never in the unit.
 
@@ -154,6 +161,30 @@ resets) and `{"error":"too many requests - try again in N seconds"}`.
   shares one bucket unless you add that gateway to `TRUSTED_PROXY_CIDRS`. Only do
   that if nothing else can reach the container directly.
 
+## Security headers
+
+Every response (pages, API, static files, errors) carries:
+
+| Header | Value | Why |
+| --- | --- | --- |
+| `Content-Security-Policy` | `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'` | the key is in the page URL, so only this origin's own files run: no inline scripts, styles or event handlers, no `eval`, no CDN |
+| `Referrer-Policy` | `no-referrer` | never send the page URL anywhere |
+| `X-Frame-Options` | `DENY` | `frame-ancestors 'none'` for older browsers |
+| `X-Content-Type-Options` | `nosniff` | no MIME sniffing |
+| `Permissions-Policy` | camera, microphone, geolocation, payment, USB, ... `=()`; `clipboard-write=(self)` | the copy buttons are the only feature the UI uses |
+| `Cross-Origin-Opener-Policy` | `same-origin` | the page that opened a link gets no handle on it |
+| `Cross-Origin-Resource-Policy` | `same-origin` | other sites cannot embed these responses |
+| `Strict-Transport-Security` | `max-age=31536000` | browsers ignore it over plain HTTP (localhost), and remote deployments are HTTPS anyway because WebCrypto needs it; no `includeSubDomains` or `preload` |
+
+`headers_test.go` checks them on every kind of route, and fails if a page gains
+an inline `<script>`, `<style>`, `style=` or `on*=` attribute.
+
+`/web/` files are served `immutable` for a year, and browsers and the Cloudflare
+edge keep them, so the pages load them as `/web/<file>?v=<hash of web/>`
+(computed at start-up; `vault.js` passes its `?v=` on to `bg.js`). Any change
+under `web/` changes every asset URL. The vendored Three.js and the images are
+not versioned: give them a new file name if you ever replace them.
+
 ## Notes / hardening ideas
 
 - Reveal is gated behind an explicit button click so link-preview crawlers
@@ -161,7 +192,8 @@ resets) and `{"error":"too many requests - try again in N seconds"}`.
 - The container runs Redis with persistence off (`--save "" --appendonly no`) so
   secrets never hit disk.
 - Possible next steps: optional passphrase (extra PBKDF2 layer), a `/metrics`
-  endpoint, and a CSP without `unsafe-inline`.
+  endpoint, and Trusted Types (`require-trusted-types-for 'script'`) once
+  `i18n.js` stops setting `innerHTML`.
 
 ## Verificación de regresiones - 2026-09-14
 
@@ -172,3 +204,7 @@ node --test tests/*.test.mjs
 ```
 
 Redis 6.2+ debe estar disponible como `redis-server`. Cada test inicia una instancia efímera sin persistencia y con socket privado; nunca usa Redis de producción. Se verifican carrera de una lectura, expiración, colisiones y cifrado WebCrypto.
+
+## License
+
+[Apache License 2.0](LICENSE). Copyright 2026 Valentín Torassa.
