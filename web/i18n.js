@@ -1,5 +1,5 @@
 // Minimal ES/EN i18n. Strings tagged with data-i18n / data-i18n-ph /
-// data-i18n-html are swapped in place; dynamic strings are read via VT.t().
+// data-i18n-rich are built with DOM nodes; dynamic strings are read via VT.t().
 // Choice persists in localStorage. A valid ?lang= query pins the receiver's
 // initial language so shared links render exactly as the sender intended.
 const _langQP = new URLSearchParams(location.search).get("lang");
@@ -27,8 +27,6 @@ const DICT = {
     meta_pre: "⏳ expira: ",
     meta_post: " · o al primer acceso",
     err_empty: "[error] payload vacío.",
-    foot_index: "<b>zero-knowledge</b> - la clave AES-256 se genera y queda en el <span class='c'>#fragmento</span> de la URL; nunca viaja al servidor.<br>Redis solo guarda texto cifrado y lo borra al primer acceso (<span class='c'>GETDEL</span>). - VT Security",
-    warn_view: "⚠ esta transmisión se <b>destruye al abrirla</b>. Si recargás, desaparece para siempre. Tené a mano dónde pegarla.",
     btn_reveal: "⮕ descifrar y destruir",
     btn_reveal_busy: "⮕ descifrando…",
     decipher_label: "DESCIFRANDO",
@@ -37,7 +35,6 @@ const DICT = {
     copied_full: "✓ copiado",
     copy_failed: "error al copiar",
     btn_create_own: "crear mi propio secreto →",
-    foot_view: "el servidor entregó texto cifrado y lo borró en el mismo instante (<span class='c'>GETDEL</span>). el descifrado AES-256 pasó <b>en tu navegador</b> con la clave del <span class='c'>#fragmento</span>. - VT Security",
     err_link_incomplete: "[error] link incompleto: falta la clave (#…). Pedí el link completo.",
     err_key_invalid: "[error] link inválido: la clave del #fragmento no es válida.",
     err_prefix: "[error] ",
@@ -63,8 +60,6 @@ const DICT = {
     meta_pre: "⏳ expires: ",
     meta_post: " · or on first access",
     err_empty: "[error] empty payload.",
-    foot_index: "<b>zero-knowledge</b> - the AES-256 key is generated and stays in the URL <span class='c'>#fragment</span>; it never reaches the server.<br>Redis only stores ciphertext and deletes it on first access (<span class='c'>GETDEL</span>). - VT Security",
-    warn_view: "⚠ this transmission <b>self-destructs when opened</b>. If you reload, it's gone forever. Have somewhere ready to paste it.",
     btn_reveal: "⮕ decrypt & destroy",
     btn_reveal_busy: "⮕ decrypting…",
     decipher_label: "DECRYPTING",
@@ -73,7 +68,6 @@ const DICT = {
     copied_full: "✓ copied",
     copy_failed: "copy failed",
     btn_create_own: "create my own secret →",
-    foot_view: "the server handed over ciphertext and deleted it in the same instant (<span class='c'>GETDEL</span>). AES-256 decryption happened <b>in your browser</b> with the key from the <span class='c'>#fragment</span>. - VT Security",
     err_link_incomplete: "[error] incomplete link: missing key (#…). Ask for the full link.",
     err_key_invalid: "[error] invalid link: the key in the #fragment is malformed.",
     err_prefix: "[error] ",
@@ -82,13 +76,37 @@ const DICT = {
   },
 };
 
+const RICH = {
+  es: {
+    foot_index: [["b", "zero-knowledge"], " - la clave AES-256 se genera y queda en el ", ["span", "#fragmento"], " de la URL; nunca viaja al servidor.", ["br"], "Redis solo guarda texto cifrado y lo borra al primer acceso (", ["span", "GETDEL"], "). - VT Security"],
+    warn_view: ["⚠ esta transmisión se ", ["b", "destruye al abrirla"], ". Si recargás, desaparece para siempre. Tené a mano dónde pegarla."],
+    foot_view: ["el servidor entregó texto cifrado y lo borró en el mismo instante (", ["span", "GETDEL"], "). el descifrado AES-256 pasó ", ["b", "en tu navegador"], " con la clave del ", ["span", "#fragmento"], ". - VT Security"],
+  },
+  en: {
+    foot_index: [["b", "zero-knowledge"], " - the AES-256 key is generated and stays in the URL ", ["span", "#fragment"], "; it never reaches the server.", ["br"], "Redis only stores ciphertext and deletes it on first access (", ["span", "GETDEL"], "). - VT Security"],
+    warn_view: ["⚠ this transmission ", ["b", "self-destructs when opened"], ". If you reload, it's gone forever. Have somewhere ready to paste it."],
+    foot_view: ["the server handed over ciphertext and deleted it in the same instant (", ["span", "GETDEL"], "). AES-256 decryption happened ", ["b", "in your browser"], " with the key from the ", ["span", "#fragment"], ". - VT Security"],
+  },
+};
+
+function richNode(part) {
+  if (typeof part === "string") return document.createTextNode(part);
+  const node = document.createElement(part[0]);
+  if (part[0] === "span") node.className = "c";
+  if (part[1]) node.textContent = part[1];
+  return node;
+}
+
 const VT = {
   lang: _initialLang,
   listeners: [],
   t(k) { return (DICT[this.lang] && DICT[this.lang][k]) ?? DICT.es[k] ?? k; },
   apply() {
     document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = this.t(el.dataset.i18n); });
-    document.querySelectorAll("[data-i18n-html]").forEach((el) => { el.innerHTML = this.t(el.dataset.i18nHtml); });
+    document.querySelectorAll("[data-i18n-rich]").forEach((el) => {
+      const parts = RICH[this.lang]?.[el.dataset.i18nRich] ?? RICH.es[el.dataset.i18nRich] ?? [];
+      el.replaceChildren(...parts.map(richNode));
+    });
     document.querySelectorAll("[data-i18n-ph]").forEach((el) => { el.placeholder = this.t(el.dataset.i18nPh); });
     document.documentElement.lang = this.lang;
     document.querySelectorAll("[data-lang]").forEach((b) => b.classList.toggle("on", b.dataset.lang === this.lang));

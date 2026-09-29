@@ -29,6 +29,7 @@ var contentSecurityPolicy = strings.Join([]string{
 	"base-uri 'none'",
 	"form-action 'self'",
 	"frame-ancestors 'none'",
+	"require-trusted-types-for 'script'",
 }, "; ")
 
 // permissionsPolicy turns off the powerful features the UI never uses. The
