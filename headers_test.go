@@ -13,7 +13,7 @@ import (
 // Uses the isolated redis-server and the request helpers of the other tests.
 
 var wantSecurityHeaders = map[string]string{
-	"Content-Security-Policy":      "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; require-trusted-types-for 'script'",
+	"Content-Security-Policy":      "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; require-trusted-types-for 'script'; trusted-types 'none'",
 	"Referrer-Policy":              "no-referrer",
 	"X-Content-Type-Options":       "nosniff",
 	"X-Frame-Options":              "DENY",
@@ -111,13 +111,15 @@ func TestPagesHaveNoInlineCode(t *testing.T) {
 			}
 		}
 	}
-	// Markup built from JS strings (innerHTML) is held to the same rule.
+	// Markup built from JS strings is held to the same rule: no HTML sinks at
+	// all (Trusted Types would throw on them anyway), no inline styles, no eval.
 	err := fs.WalkDir(webFS, "web", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".js") || strings.HasPrefix(path, "web/vendor/") {
 			return err
 		}
 		body, _ := webFS.ReadFile(path)
-		for _, bad := range []string{"style=", `setAttribute("style"`, "cssText", "eval(", "new Function"} {
+		for _, bad := range []string{"style=", `setAttribute("style"`, "cssText", "eval(", "new Function",
+			"innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "createContextualFragment", "srcdoc"} {
 			if strings.Contains(string(body), bad) {
 				t.Errorf("%s uses %s", path, bad)
 			}

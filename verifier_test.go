@@ -115,3 +115,20 @@ func TestMalformedVerifierInputIsRejected(t *testing.T) {
 		t.Fatalf("secret burned by malformed input: %v", err)
 	}
 }
+
+// Create only accepts application/json: a cross-site form or a text/plain
+// "simple" request cannot create secrets without a CORS preflight.
+func TestCreateRequiresJSONContentType(t *testing.T) {
+	h := newServer(testConfig(), testStore(t)).routes()
+	body := `{"ciphertext":"` + base64.StdEncoding.EncodeToString([]byte("opaque")) + `"}`
+	for _, ct := range []string{"none", "text/plain", "application/x-www-form-urlencoded", "multipart/form-data; boundary=x"} {
+		rq := request{method: http.MethodPost, path: "/api/secret", remote: "198.51.100.43:7000", body: body, contentType: ct}
+		if rec := do(t, h, rq); rec.Code != http.StatusUnsupportedMediaType {
+			t.Fatalf("content-type %q: %d want 415", ct, rec.Code)
+		}
+	}
+	rq := request{method: http.MethodPost, path: "/api/secret", remote: "198.51.100.43:7000", body: body, contentType: "application/json; charset=utf-8"}
+	if rec := do(t, h, rq); rec.Code != http.StatusCreated {
+		t.Fatalf("json with charset: %d", rec.Code)
+	}
+}

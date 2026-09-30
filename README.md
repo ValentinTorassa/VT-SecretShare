@@ -183,7 +183,7 @@ Every response (pages, API, static files, errors) carries:
 
 | Header | Value | Why |
 | --- | --- | --- |
-| `Content-Security-Policy` | `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; require-trusted-types-for 'script'` | the key is in the page URL, so only this origin's own files run: no inline scripts, styles or event handlers, no `eval`, no CDN; Chromium also rejects raw HTML assignment to script sinks |
+| `Content-Security-Policy` | `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; require-trusted-types-for 'script'; trusted-types 'none'` | the key is in the page URL, so only this origin's own files run: no inline scripts, styles or event handlers, no `eval`, no CDN; Chromium also rejects any string assigned to an HTML sink, and no Trusted Types policy can be created to get around that |
 | `Referrer-Policy` | `no-referrer` | never send the page URL anywhere |
 | `X-Frame-Options` | `DENY` | `frame-ancestors 'none'` for older browsers |
 | `X-Content-Type-Options` | `nosniff` | no MIME sniffing |
@@ -193,7 +193,14 @@ Every response (pages, API, static files, errors) carries:
 | `Strict-Transport-Security` | `max-age=31536000` | browsers ignore it over plain HTTP (localhost), and remote deployments are HTTPS anyway because WebCrypto needs it; no `includeSubDomains` or `preload` |
 
 `headers_test.go` checks them on every kind of route, and fails if a page gains
-an inline `<script>`, `<style>`, `style=` or `on*=` attribute.
+an inline `<script>`, `<style>`, `style=` or `on*=` attribute, or if a script
+under `web/` uses an HTML sink (`innerHTML`, `outerHTML`, `insertAdjacentHTML`,
+`document.write`, ...). Localized rich text is built from a fixed allowlist of
+elements (`b`, `span`, `br`) with no attributes.
+
+`POST /api/secret` only accepts `Content-Type: application/json` (415
+otherwise), so a cross-site form or a `text/plain` "simple" request cannot
+create secrets without a CORS preflight, which the server never grants.
 
 `/web/` files are served `immutable` for a year, and browsers and the Cloudflare
 edge keep them, so the pages load them as `/web/<file>?v=<hash of web/>`
@@ -208,8 +215,9 @@ not versioned: give them a new file name if you ever replace them.
 - The container runs Redis with persistence off (`--save "" --appendonly no`) so
   secrets never hit disk.
 - Possible next steps: optional passphrase (extra PBKDF2 layer), a `/metrics`
-  endpoint. Trusted Types (`require-trusted-types-for 'script'`) is enabled;
-  localized rich text is assembled with DOM nodes rather than `innerHTML`.
+  endpoint. Trusted Types (`require-trusted-types-for 'script'` plus
+  `trusted-types 'none'`) is enabled; localized rich text is assembled with DOM
+  nodes rather than `innerHTML`.
 
 ## Verificación de regresiones - 2026-09-14
 

@@ -30,6 +30,9 @@ var contentSecurityPolicy = strings.Join([]string{
 	"form-action 'self'",
 	"frame-ancestors 'none'",
 	"require-trusted-types-for 'script'",
+	// No Trusted Types policy may be created at all: the pages build every
+	// node with the DOM API, so any string reaching an HTML sink throws.
+	"trusted-types 'none'",
 }, "; ")
 
 // permissionsPolicy turns off the powerful features the UI never uses. The

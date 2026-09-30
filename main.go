@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net"
 	"net/http"
 	"net/netip"
@@ -182,6 +183,14 @@ type createRequest struct {
 	VerifierHash string `json:"verifier_hash"`
 }
 
+// isJSON reports whether the request declares a JSON body. Requiring it on
+// create means a cross-site form or a simple CORS request (text/plain) cannot
+// create secrets: application/json forces a preflight the server never grants.
+func isJSON(r *http.Request) bool {
+	mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	return err == nil && mt == "application/json"
+}
+
 type revealRequest struct {
 	// Verifier is base64url(HKDF(key)), 32 bytes. The server only hashes it
 	// and compares; it cannot recover the key from it.
@@ -211,6 +220,10 @@ type createResponse struct {
 }
 
 func (s *server) handleCreate(w http.ResponseWriter, r *http.Request) {
+	if !isJSON(r) {
+		writeErr(w, http.StatusUnsupportedMediaType, "content-type must be application/json")
+		return
+	}
 	var req createRequest
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, int64(s.cfg.maxCipherLen)+1024))
 	if err := dec.Decode(&req); err != nil {

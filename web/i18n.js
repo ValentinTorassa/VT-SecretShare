@@ -93,8 +93,12 @@ const RICH = {
   },
 };
 
+// Only these elements can come out of RICH, and never with attributes (the
+// span gets a fixed class), so even an edited dictionary cannot inject markup.
+const RICH_TAGS = new Set(["b", "span", "br"]);
 function richNode(part) {
   if (typeof part === "string") return document.createTextNode(part);
+  if (!Array.isArray(part) || !RICH_TAGS.has(part[0])) return document.createTextNode(Array.isArray(part) ? String(part[1] ?? "") : "");
   const node = document.createElement(part[0]);
   if (part[0] === "span") node.className = "c";
   if (part[1]) node.textContent = part[1];
