@@ -57,12 +57,22 @@ type request struct {
 	method, path, remote, cfIP string
 	body                       string
 	reveal                     bool
+	// contentType defaults to application/json when there is a body; "none"
+	// sends no Content-Type header at all.
+	contentType string
 }
 
 func do(t *testing.T, h http.Handler, rq request) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(rq.method, rq.path, strings.NewReader(rq.body))
 	req.RemoteAddr = rq.remote
+	switch {
+	case rq.contentType == "none":
+	case rq.contentType != "":
+		req.Header.Set("Content-Type", rq.contentType)
+	case rq.body != "":
+		req.Header.Set("Content-Type", "application/json")
+	}
 	if rq.cfIP != "" {
 		req.Header.Set("CF-Connecting-IP", rq.cfIP)
 	}

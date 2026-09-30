@@ -34,3 +34,14 @@ test('different keys give different verifiers',async()=>{
  const a=await api.vtEncrypt('x'),b=await api.vtEncrypt('x');
  assert.notEqual(await api.vtVerifier(a.keyFragment),await api.vtVerifier(b.keyFragment));
 });
+test('localized rich text only builds b, span and br elements',()=>{
+ const made=[];
+ const document={querySelectorAll:()=>[],documentElement:{},createTextNode:t=>({text:t}),createElement:tag=>{const n={tag,className:'',textContent:''};made.push(n);return n;}};
+ const ctx={document,location:{search:''},localStorage:{getItem:()=>null,setItem(){}},window:{},URLSearchParams};
+ const {richNode}=runInNewContext(readFileSync(new URL('../web/i18n.js',import.meta.url),'utf8')+';({richNode})',ctx);
+ assert.equal(richNode(['b','bold']).tag,'b');
+ assert.equal(richNode(['span','x']).className,'c');
+ for(const evil of [['script','alert(1)'],['img','x'],['a','link'],'plain']){const n=richNode(evil);assert.equal(n.tag,undefined,JSON.stringify(evil));}
+ assert.equal(richNode(['script','alert(1)']).text,'alert(1)');
+ assert.deepEqual(made.map(n=>n.tag),['b','span']);
+});
