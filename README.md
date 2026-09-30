@@ -80,7 +80,7 @@ browser ──POST {verifier}──▶ Go ──Lua: GET, compare, DEL──▶ 
 Or manually:
 
 ```bash
-docker run -d --name vt-redis-dev -p 6379:6379 redis:7-alpine
+docker run -d --name vt-redis-dev -p 127.0.0.1:6379:6379 redis:7-alpine --save "" --appendonly no
 go run .
 ```
 
