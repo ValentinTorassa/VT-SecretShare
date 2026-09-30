@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/netip"
 	"os"
@@ -33,6 +34,7 @@ import (
 var webFS embed.FS
 
 type config struct {
+	bindAddr      string
 	port          string
 	redisAddr     string
 	redisPassword string
@@ -52,6 +54,10 @@ type config struct {
 
 func loadConfig() config {
 	c := config{
+		// Loopback by default: in production cloudflared is the only client
+		// and connects from localhost, so nothing on the LAN or tailnet should
+		// reach the plain-HTTP port directly. Containers set 0.0.0.0.
+		bindAddr:      env("BIND_ADDR", "127.0.0.1"),
 		port:          env("PORT", "8080"),
 		redisAddr:     env("REDIS_ADDR", "127.0.0.1:6379"),
 		redisPassword: env("REDIS_PASSWORD", ""),
@@ -143,11 +149,19 @@ func main() {
 	s := newServer(cfg, store)
 
 	srv := &http.Server{
-		Addr:              ":" + cfg.port,
+		Addr:              net.JoinHostPort(cfg.bindAddr, cfg.port),
 		Handler:           s.routes(),
 		ReadHeaderTimeout: 5 * time.Second,
+		// A request is at most ~257 KB of JSON and every response is small, so
+		// these only cut off slow or stuck clients that would hold a goroutine.
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 	log.Printf("VT-SecretShare listening on %s (base url %s, redis %s)", srv.Addr, cfg.baseURL, cfg.redisAddr)
+	if ip, err := netip.ParseAddr(cfg.bindAddr); err == nil && !ip.IsLoopback() {
+		log.Printf("BIND_ADDR %s is not loopback: the plain-HTTP port is reachable from the network", cfg.bindAddr)
+	}
 	saltSource := "RATE_LIMIT_SALT"
 	if cfg.rateLimitSalt == "" {
 		saltSource = "random per process (counters reset on restart; set RATE_LIMIT_SALT to keep them)"
