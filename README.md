@@ -105,7 +105,10 @@ insecure origins (except `localhost`).
 secretshare.valentorassa.com is not the compose setup: it is the Go binary
 under a systemd unit (tracked in the private infra repo) on the same host as
 `cloudflared`, which forwards to `localhost:8081`. That is why the default
-`TRUSTED_PROXY_CIDRS` is loopback only. To update it: pull, `go test ./...`,
+`TRUSTED_PROXY_CIDRS` is loopback only, and why the app listens on
+`127.0.0.1` unless `BIND_ADDR` says otherwise: nothing on the LAN or tailnet
+needs the plain-HTTP port. The server drops clients that stall (5 s for
+headers, 15 s to read a request, 30 s to write a response, 120 s idle). To update it: pull, `go test ./...`,
 build to a new file, smoke-test it on a spare port (`/healthz` → 200,
 `/api/secret/x/meta` → 404, which also exercises the rate-limit script, and
 `curl -sI /` carries the `Content-Security-Policy`), keep
@@ -116,6 +119,7 @@ the previous binary for rollback, swap, restart the unit. Keep
 
 | Var | Default | Meaning |
 | --- | --- | --- |
+| `BIND_ADDR` | `127.0.0.1` | listen address; loopback because `cloudflared` (or your proxy) is the only client. The container image sets `0.0.0.0` |
 | `PORT` | `8080` | listen port |
 | `APP_PORT` | `8080` | host port published by Docker Compose |
 | `REDIS_ADDR` | `127.0.0.1:6379` | redis address |
