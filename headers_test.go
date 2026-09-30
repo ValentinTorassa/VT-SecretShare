@@ -27,7 +27,7 @@ func TestSecurityHeadersOnEveryResponse(t *testing.T) {
 	cfg := testConfig()
 	cfg.readLimit = 3
 	h := newServer(cfg, store).routes()
-	if err := store.Save(context.Background(), "live", "b3BhcXVl", time.Minute); err != nil {
+	if err := store.Save(context.Background(), "live", "b3BhcXVl", "", time.Minute); err != nil {
 		t.Fatal(err)
 	}
 	const client = "198.51.100.30:7000"

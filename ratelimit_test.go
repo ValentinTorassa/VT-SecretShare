@@ -237,7 +237,7 @@ func TestReadLimitCoversMetaAndRevealAndRunsBeforeBurn(t *testing.T) {
 	cfg := testConfig()
 	cfg.readLimit = 2
 	h := newServer(cfg, store).routes()
-	if err := store.Save(context.Background(), "abc", "opaque", time.Minute); err != nil {
+	if err := store.Save(context.Background(), "abc", "opaque", "", time.Minute); err != nil {
 		t.Fatal(err)
 	}
 	const attacker = "198.51.100.20:5000"

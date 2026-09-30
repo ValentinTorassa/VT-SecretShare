@@ -40,6 +40,8 @@ const DICT = {
     err_prefix: "[error] ",
     gone_prefix: "[gone] ",
     err_retry_later: "demasiados intentos. El secreto sigue intacto: recargá en {s} segundos.",
+    err_key_wrong: "la clave del link no coincide con este secreto. No se abrió y sigue intacto: revisá que copiaste el link completo.",
+    gone_meta: "este secreto ya no existe: link equivocado, vencido o ya leído.",
   },
   en: {
     typed_index: "the server never sees your secret. .env is not security.",
@@ -73,19 +75,21 @@ const DICT = {
     err_prefix: "[error] ",
     gone_prefix: "[gone] ",
     err_retry_later: "too many attempts. The secret is still intact: reload in {s} seconds.",
+    err_key_wrong: "the key in this link doesn't match this secret. It was not opened and is still intact: check you copied the whole link.",
+    gone_meta: "this secret no longer exists: wrong link, expired, or already viewed.",
   },
 };
 
 const RICH = {
   es: {
-    foot_index: [["b", "zero-knowledge"], " - la clave AES-256 se genera y queda en el ", ["span", "#fragmento"], " de la URL; nunca viaja al servidor.", ["br"], "Redis solo guarda texto cifrado y lo borra al primer acceso (", ["span", "GETDEL"], "). - VT Security"],
+    foot_index: [["b", "zero-knowledge"], " - la clave AES-256 se genera y queda en el ", ["span", "#fragmento"], " de la URL; nunca viaja al servidor.", ["br"], "Redis solo guarda texto cifrado y lo borra al primer acceso con la clave correcta (", ["span", "lectura y borrado atómicos"], "). - VT Security"],
     warn_view: ["⚠ esta transmisión se ", ["b", "destruye al abrirla"], ". Si recargás, desaparece para siempre. Tené a mano dónde pegarla."],
-    foot_view: ["el servidor entregó texto cifrado y lo borró en el mismo instante (", ["span", "GETDEL"], "). el descifrado AES-256 pasó ", ["b", "en tu navegador"], " con la clave del ", ["span", "#fragmento"], ". - VT Security"],
+    foot_view: ["el servidor entregó texto cifrado y lo borró en el mismo instante (", ["span", "lectura y borrado atómicos"], "). el descifrado AES-256 pasó ", ["b", "en tu navegador"], " con la clave del ", ["span", "#fragmento"], ". - VT Security"],
   },
   en: {
-    foot_index: [["b", "zero-knowledge"], " - the AES-256 key is generated and stays in the URL ", ["span", "#fragment"], "; it never reaches the server.", ["br"], "Redis only stores ciphertext and deletes it on first access (", ["span", "GETDEL"], "). - VT Security"],
+    foot_index: [["b", "zero-knowledge"], " - the AES-256 key is generated and stays in the URL ", ["span", "#fragment"], "; it never reaches the server.", ["br"], "Redis only stores ciphertext and deletes it on the first access with the right key (", ["span", "atomic read-and-delete"], "). - VT Security"],
     warn_view: ["⚠ this transmission ", ["b", "self-destructs when opened"], ". If you reload, it's gone forever. Have somewhere ready to paste it."],
-    foot_view: ["the server handed over ciphertext and deleted it in the same instant (", ["span", "GETDEL"], "). AES-256 decryption happened ", ["b", "in your browser"], " with the key from the ", ["span", "#fragment"], ". - VT Security"],
+    foot_view: ["the server handed over ciphertext and deleted it in the same instant (", ["span", "atomic read-and-delete"], "). AES-256 decryption happened ", ["b", "in your browser"], " with the key from the ", ["span", "#fragment"], ". - VT Security"],
   },
 };
 
