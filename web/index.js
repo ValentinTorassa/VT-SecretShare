@@ -30,11 +30,12 @@ $("#create").addEventListener("click", async () => {
 
   try {
     const { ciphertext, keyFragment } = await vtEncrypt(secret);   // key stays in-browser
+    const verifier_hash = await vtVerifierHash(keyFragment);        // proves the key on reveal
     const ttl = parseInt($("#ttl").value, 10);
     const res = await fetch("/api/secret", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ciphertext, ttl_seconds: ttl }),
+      body: JSON.stringify({ ciphertext, ttl_seconds: ttl, verifier_hash }),
     });
     if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || ("HTTP "+res.status)); }
     const data = await res.json();

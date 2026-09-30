@@ -3,6 +3,13 @@
 // The server never receives it. Wire format of the ciphertext blob:
 //   base64( iv[12 bytes] || aes-gcm-ciphertext-with-tag )
 // The key is exported raw and base64url-encoded to live in the URL #fragment.
+//
+// Reveal verifier: HKDF-SHA256 over the raw key (info below) gives 32 bytes
+// that prove the reveal holds the key without revealing it (HKDF output for a
+// different info is unrelated to the key). The server gets SHA-256(verifier)
+// on create and the verifier itself on reveal, and only burns the secret when
+// they match, so a mistyped or truncated link no longer destroys it.
+const VT_VERIFIER_INFO = "vt-secretshare/reveal-verifier/v1";
 
 function bytesToB64(bytes) {
   let s = "";
@@ -56,4 +63,21 @@ async function vtDecrypt(ciphertextB64, keyFragment) {
   const key = await crypto.subtle.importKey("raw", rawKey, { name: "AES-GCM" }, false, ["decrypt"]);
   const ptBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct);
   return new TextDecoder().decode(ptBuf);
+}
+
+// vtVerifier(keyFragment base64url) -> verifier (base64url, 32 bytes)
+async function vtVerifier(keyFragment) {
+  const ikm = await crypto.subtle.importKey("raw", b64urlToBytes(keyFragment), "HKDF", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info: new TextEncoder().encode(VT_VERIFIER_INFO) },
+    ikm,
+    256
+  );
+  return bytesToB64url(new Uint8Array(bits));
+}
+
+// vtVerifierHash(keyFragment) -> base64url(SHA-256(verifier)), sent on create
+async function vtVerifierHash(keyFragment) {
+  const verifier = b64urlToBytes(await vtVerifier(keyFragment));
+  return bytesToB64url(new Uint8Array(await crypto.subtle.digest("SHA-256", verifier)));
 }

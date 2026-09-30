@@ -3,14 +3,17 @@
 // The browser encrypts the secret with a random AES-256-GCM key (WebCrypto).
 // Only the ciphertext is POSTed here; the key lives in the URL #fragment and is
 // never transmitted to this server. We hand the ciphertext to Redis with a TTL.
-// The first GET burns it via GETDEL. The server therefore never sees plaintext,
-// never sees the key, and keeps nothing after a single read or the TTL - there
-// is nothing useful to steal from process memory, logs, or a Redis dump.
+// The first reveal that proves it holds the key (a verifier derived from it,
+// see store.go) burns it atomically. The server therefore never sees
+// plaintext, never sees the key, and keeps nothing after a single read or the
+// TTL - there is nothing useful to steal from process memory, logs, or a
+// Redis dump.
 package main
 
 import (
 	"context"
 	cryptorand "crypto/rand"
+	"crypto/sha256"
 	"embed"
 	"encoding/base64"
 	"encoding/json"
@@ -159,6 +162,31 @@ func main() {
 type createRequest struct {
 	Ciphertext string `json:"ciphertext"`
 	TTLSeconds int    `json:"ttl_seconds"`
+	// VerifierHash is base64url(SHA-256(verifier)), where the browser derives
+	// the verifier from the key with HKDF. Optional: without it the secret
+	// burns on the first reveal, as before verifiers existed.
+	VerifierHash string `json:"verifier_hash"`
+}
+
+type revealRequest struct {
+	// Verifier is base64url(HKDF(key)), 32 bytes. The server only hashes it
+	// and compares; it cannot recover the key from it.
+	Verifier string `json:"verifier"`
+}
+
+// decode32 decodes an unpadded base64url string that must hold exactly 32 bytes.
+func decode32(s string) ([]byte, bool) {
+	if len(s) != 43 {
+		return nil, false
+	}
+	b, err := base64.RawURLEncoding.DecodeString(s)
+	return b, err == nil && len(b) == 32
+}
+
+// verifierHash returns base64url(SHA-256(verifier bytes)).
+func verifierHash(verifier []byte) string {
+	sum := sha256.Sum256(verifier)
+	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
 
 type createResponse struct {
@@ -190,6 +218,12 @@ func (s *server) handleCreate(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "ciphertext must be base64")
 		return
 	}
+	if req.VerifierHash != "" {
+		if _, ok := decode32(req.VerifierHash); !ok {
+			writeErr(w, http.StatusBadRequest, "verifier_hash must be 32 bytes, base64url without padding")
+			return
+		}
+	}
 
 	ttl := s.cfg.defaultTTL
 	if req.TTLSeconds > 0 {
@@ -216,7 +250,7 @@ func (s *server) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.store.Save(r.Context(), id, req.Ciphertext, ttl); err != nil {
+	if err := s.store.Save(r.Context(), id, req.Ciphertext, req.VerifierHash, ttl); err != nil {
 		if errors.Is(err, ErrExists) {
 			writeErr(w, http.StatusConflict, "id collision, retry")
 			return
@@ -235,17 +269,44 @@ func (s *server) handleCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleBurn reads-and-deletes. POST plus a custom header prevents link previews
-// and cross-origin simple requests from consuming the secret.
+// and cross-origin simple requests from consuming the secret. The optional JSON
+// body carries the key verifier; a secret stored with one is only burned when
+// it matches, so a wrong key gets 403 and the secret stays.
 func (s *server) handleBurn(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("X-VT-Reveal") != "1" {
 		writeErr(w, http.StatusForbidden, "explicit reveal required")
 		return
 	}
+	var req revealRequest
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1024))
+	if err != nil {
+		writeErr(w, http.StatusRequestEntityTooLarge, "reveal body too large")
+		return
+	}
+	if len(strings.TrimSpace(string(body))) > 0 {
+		if err := json.Unmarshal(body, &req); err != nil {
+			writeErr(w, http.StatusBadRequest, "invalid json body")
+			return
+		}
+	}
+	hash := ""
+	if req.Verifier != "" {
+		v, ok := decode32(req.Verifier)
+		if !ok {
+			writeErr(w, http.StatusBadRequest, "verifier must be 32 bytes, base64url without padding")
+			return
+		}
+		hash = verifierHash(v)
+	}
 	id := r.PathValue("id")
-	ciphertext, err := s.store.Burn(r.Context(), id)
+	ciphertext, err := s.store.Burn(r.Context(), id, hash)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			writeErr(w, http.StatusNotFound, "this secret is gone - wrong link, expired, or already viewed")
+			return
+		}
+		if errors.Is(err, ErrWrongKey) {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "the key in this link does not match the secret; it was not opened and is still there", "code": "wrong_key"})
 			return
 		}
 		log.Printf("burn error: %v", err)

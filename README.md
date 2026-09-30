@@ -15,15 +15,27 @@ Redis commands and a fancy hacker UI.
 - **Only its own scripts run.** Any script on the view page could read the key,
   so a strict Content-Security-Policy (`script-src 'self'`, no inline code, no
   CDN) keeps injected markup from running. See [Security headers](#security-headers).
-- **One read, then gone.** The first reveal calls Redis `GETDEL` - an atomic
-  read-and-delete. Two people racing the same link can never both win.
+- **One read, then gone.** The first reveal runs one Redis Lua script that reads
+  and deletes atomically. Two people racing the same link can never both win.
+- **A wrong key doesn't burn it.** The browser derives a *verifier* from the key
+  (HKDF-SHA256, a separate output that reveals nothing about the key) and sends
+  only its SHA-256 on create. A reveal must present the verifier; the same Lua
+  script compares it before deleting, so a truncated or mistyped link gets
+  `403 wrong_key` and the secret stays. Secrets created without a verifier (old
+  clients, `curl`) keep the original burn-on-first-reveal behaviour.
+- **The key leaves the address bar.** The view page reads the `#key` once, then
+  `history.replaceState` removes it, so the (synced) history entry never holds a
+  usable link while the secret is alive. A reload before revealing reads it back
+  from that tab's `sessionStorage`, which is not synced and dies with the tab.
+  Best effort: a browser may already have recorded the original URL.
 - **Nothing to steal at rest.** Redis only ever holds ciphertext, with a hard TTL.
   Dump Redis, read the logs, inspect server memory - there is no plaintext and no key.
 
-So the entire server is basically: `SET key <ciphertext> EX <ttl>` on create,
-`GETDEL key` on read. That's the whole persistence model. Redis is doing the
-security-relevant work (atomic burn + TTL expiry), which makes it a clean story
-for a video.
+So the entire server is basically: `SET key v1:<verifier hash>:<ciphertext> NX EX
+<ttl>` on create, and one Lua script (`GET`, compare the verifier hash, `DEL`) on
+read. That's the whole persistence model. Redis is doing the security-relevant
+work (atomic check-and-burn + TTL expiry), which makes it a clean story for a
+video.
 
 ## Architecture
 
@@ -31,14 +43,14 @@ for a video.
 browser ──(AES-256-GCM encrypt)──▶ ciphertext ──POST──▶ Go ──SET..EX──▶ Redis
 share link = /s/{id}?theme=pro&lang=en#{key}  (preferences in query, key in fragment)
 
-browser ──POST──▶ Go ──GETDEL──▶ Redis ──ciphertext──▶ browser ──(decrypt with #key)──▶ secret
-                         ▲ key is deleted in the same atomic op
+browser ──POST {verifier}──▶ Go ──Lua: GET, compare, DEL──▶ Redis ──ciphertext──▶ browser ──(decrypt with #key)──▶ secret
+                         ▲ the verifier is checked and the value deleted in the same atomic step
 ```
 
 - `main.go` - HTTP API + embedded static UI (`go:embed`). Tiny.
 - `headers.go` - security headers on every response, and the asset version.
-- `store.go` - the only thing that talks to Redis (`SetNX` + `GetDel` + `TTL`,
-  plus the atomic rate-limit counter script).
+- `store.go` - the only thing that talks to Redis (`SetNX`, the check-and-burn
+  script, `TTL`, plus the atomic rate-limit counter script).
 - `ratelimit.go` - per-client rate limiting and client-IP resolution.
 - `web/` - UI: `index.html` + `index.js` (create), `view.html` + `view.js`
   (reveal), `vault.js` (loads `bg.js`, the Three.js 3D vault-core), `matrix.js`
@@ -123,9 +135,9 @@ the previous binary for rollback, swap, restart the unit. Keep
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| `POST` | `/api/secret` | body `{ciphertext, ttl_seconds?}` → `{id, share_url, ttl_seconds, expires_at}`; create limit |
-| `POST` | `/api/secret/{id}/reveal` | header `X-VT-Reveal: 1`; **burns** it (GETDEL) → `{ciphertext}` or 404; read limit |
-| `GET` | `/api/secret/{id}/meta` | TTL/alive without burning; read limit |
+| `POST` | `/api/secret` | body `{ciphertext, ttl_seconds?, verifier_hash?}` → `{id, share_url, ttl_seconds, expires_at}`; create limit |
+| `POST` | `/api/secret/{id}/reveal` | header `X-VT-Reveal: 1`, body `{verifier}` (empty for secrets without one); **burns** it → `{ciphertext}`, `403 {"code":"wrong_key"}` (secret kept) or 404; read limit |
+| `GET` | `/api/secret/{id}/meta` | TTL/alive without burning; the view page calls it on load to show the expiry or say the link is dead; read limit |
 | `GET` | `/healthz` | `200 {"status":"ok"}` if Redis answers `PING` within 1 s, else `503`; not rate limited |
 
 Over a limit the API answers `429` with `Retry-After` (seconds until the window
@@ -138,8 +150,8 @@ resets) and `{"error":"too many requests - try again in N seconds"}`.
   never be left without a TTL. Counters live in Redis, not in process memory.
 - **Two budgets.** Creating (`POST /api/secret`) and reading (`reveal` and `meta`)
   are counted separately. Reading is the guessing surface: `meta` is an existence
-  oracle and `reveal` burns. The limiter runs before `GETDEL`, so a rejected
-  reveal never burns the secret.
+  oracle and `reveal` burns. The limiter runs before the burn script, so a
+  rejected reveal never burns the secret.
 - **When Redis is down.** The create limiter **fails open** and logs: creating is
   not a guessing surface, and the `SET` that follows fails anyway. The read
   limiter **fails closed** with `503` + `Retry-After`: reads must not become
