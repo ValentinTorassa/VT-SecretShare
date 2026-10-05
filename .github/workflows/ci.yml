@@ -4,7 +4,10 @@ permissions:
   contents: read
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moves to Ubuntu 26.04 on 2026-10-19, and the
+    # redis-server below comes from the image's apt archive (7.0 on 24.04,
+    # 8.0 on 26.04). Change Redis majors on purpose, not with the alias.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
