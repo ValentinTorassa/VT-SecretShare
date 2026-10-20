@@ -6,6 +6,12 @@ Redis commands and a fancy hacker UI.
 
 > `.env` no es seguridad. - VT Security
 
+![VT-SecretShare demo: a secret is encrypted in the browser, its one-time link opens once, and opening the same link again says the secret is gone](docs/demo.gif)
+
+Create a secret, copy the link, open it once, then open the same link again: the
+server already deleted it. Recorded against a local `docker compose up` with a fake
+secret.
+
 ## Why it's actually secure (the demo-worthy part)
 
 - **Zero-knowledge.** The secret is encrypted **in your browser** with a random
