@@ -137,7 +137,7 @@ select{appearance:none;cursor:pointer}
   margin-bottom:20px;background:rgba(255,59,59,.06)}
 .secretbox{display:none;margin-top:8px}
 .secretbox.show{display:block;animation:rise .4s both}
-.secretbox .copy{margin-top:14px;width:100%}
+.secretbox .copy{margin-top:14px;width:100%;padding:14px}
 pre{background:rgba(5,9,15,.9);border:1px solid var(--line);border-radius:10px;padding:18px;
   margin:8px 0 0;white-space:pre-wrap;word-break:break-all;color:var(--green);font-size:15px;
   text-shadow:0 0 12px rgba(39,208,122,.4)}
