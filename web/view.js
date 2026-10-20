@@ -21,10 +21,14 @@ function forgetKey() { try { sessionStorage.removeItem(KEY_SLOT); } catch (_) {}
 const keyFragment = takeKeyFragment();
 let revealedPlaintext = "";
 
-function showGone(text) {
+// A link that cannot open says so in the subtitle too, instead of "awaiting
+// authorization": typed_gone when the secret no longer exists, typed_badlink
+// when the #key is missing or malformed.
+function showGone(text, subtitle) {
   $("#ready").style.display = "none";
   $("#gone").textContent = text;
   $("#gone").classList.add("show");
+  if (subtitle) setTyped(subtitle);
 }
 
 let typeToken = 0;
@@ -33,8 +37,10 @@ function startType(text){
   const my = ++typeToken; let i = 0;
   (function tick(){ if(my!==typeToken) return; if(i<=text.length){ $("#typed").textContent = text.slice(0,i++); setTimeout(tick, 30);} })();
 }
-VT.onChange(() => startType(VT.t("typed_view")));
-THEME.onChange(() => startType(VT.t("typed_view")));
+let typedKey = "typed_view";
+function setTyped(key) { typedKey = key; startType(VT.t(key)); }
+VT.onChange(() => startType(VT.t(typedKey)));
+THEME.onChange(() => startType(VT.t(typedKey)));
 
 // Before the reveal button is pressed, ask the server (without burning) whether
 // the secret still exists and until when, so a dead link says so up front.
@@ -50,7 +56,7 @@ VT.onChange(renderExpiry);
 async function checkAlive() {
   try {
     const res = await fetch(`/api/secret/${encodeURIComponent(id)}/meta`);
-    if (res.status === 404) { forgetKey(); showGone(VT.t("gone_prefix") + VT.t("gone_meta")); return; }
+    if (res.status === 404) { forgetKey(); showGone(VT.t("gone_prefix") + VT.t("gone_meta"), "typed_gone"); return; }
     if (!res.ok) return; // rate limited or storage down: the reveal will say so
     expiresAt = (await res.json()).expires_at;
     renderExpiry();
@@ -58,7 +64,7 @@ async function checkAlive() {
 }
 
 if (!keyFragment || !vtValidKeyFragment(keyFragment)) {
-  showGone(VT.t(keyFragment ? "err_key_invalid" : "err_link_incomplete"));
+  showGone(VT.t(keyFragment ? "err_key_invalid" : "err_link_incomplete"), "typed_badlink");
 } else {
   checkAlive();
 }
@@ -100,8 +106,9 @@ $("#reveal").addEventListener("click", async () => {
         err.retryable = true;
         throw err;
       }
-      if (res.status === 404) forgetKey();
-      throw new Error(e.error || ("HTTP "+res.status));
+      const err = new Error(e.error || ("HTTP "+res.status));
+      if (res.status === 404) { forgetKey(); err.gone = true; }
+      throw err;
     }
     const { ciphertext } = await res.json();
     forgetKey();                                       // burned: the key is useless now
@@ -119,9 +126,7 @@ $("#reveal").addEventListener("click", async () => {
     $("#copy").disabled = false;
   } catch (e) {
     $("#cipherfx").classList.remove("show");
-    $("#ready").style.display = "none";
-    $("#gone").textContent = (e.retryable ? VT.t("err_prefix") : VT.t("gone_prefix")) + e.message;
-    $("#gone").classList.add("show");
+    showGone((e.retryable ? VT.t("err_prefix") : VT.t("gone_prefix")) + e.message, e.gone && "typed_gone");
   }
 });
 

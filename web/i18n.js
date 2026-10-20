@@ -11,6 +11,8 @@ const DICT = {
   es: {
     typed_index: "el server nunca ve tu secreto. .env no es seguridad.",
     typed_view: "clave detectada en #fragmento. esperando autorización…",
+    typed_gone: "transmisión terminada. no queda nada que descifrar.",
+    typed_badlink: "sin clave válida en #fragmento. no se puede descifrar.",
     label_secret: "// secreto - password · token · api key",
     ph_secret: "pegá el secreto a transmitir (se cifra en este navegador)",
     label_ttl: "// autodestrucción en",
@@ -46,6 +48,8 @@ const DICT = {
   en: {
     typed_index: "the server never sees your secret. .env is not security.",
     typed_view: "key detected in #fragment. awaiting authorization…",
+    typed_gone: "transmission terminated. nothing left to decrypt.",
+    typed_badlink: "no valid key in #fragment. cannot decrypt.",
     label_secret: "// secret - password · token · api key",
     ph_secret: "paste the secret to transmit (encrypted in this browser)",
     label_ttl: "// self-destruct in",
