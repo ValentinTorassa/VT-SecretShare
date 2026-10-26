@@ -2,6 +2,16 @@
 
 Notable changes to VT-SecretShare. Versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Security
+
+- Build with Go 1.27.3. Go 1.27.2's `crypto/x509` still trusted a set of
+  compromised intermediate certificates
+  ([GO-2026-6809](https://pkg.go.dev/vuln/GO-2026-6809)); govulncheck found the
+  server reaching `x509.Certificate.Verify`. The Docker image builds with
+  `golang:1.27.3-alpine` too.
+
 ## 1.0.0 - 2026-10-20
 
 First tagged release. It covers everything built since June 2026, the same code
