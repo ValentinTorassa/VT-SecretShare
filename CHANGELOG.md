@@ -2,7 +2,7 @@
 
 Notable changes to VT-SecretShare. Versions follow [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 1.0.1 - 2026-11-10
 
 ### Security
 
