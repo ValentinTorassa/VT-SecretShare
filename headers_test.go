@@ -13,7 +13,7 @@ import (
 // Uses the isolated redis-server and the request helpers of the other tests.
 
 var wantSecurityHeaders = map[string]string{
-	"Content-Security-Policy":      "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; require-trusted-types-for 'script'; trusted-types 'none'",
+	"Content-Security-Policy":      "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; require-trusted-types-for 'script'; trusted-types 'none'",
 	"Referrer-Policy":              "no-referrer",
 	"X-Content-Type-Options":       "nosniff",
 	"X-Frame-Options":              "DENY",
@@ -41,10 +41,12 @@ func TestSecurityHeadersOnEveryResponse(t *testing.T) {
 	}{
 		{"create page", get("/"), http.StatusOK, "text/html; charset=utf-8", "no-store"},
 		{"view page", get("/s/live"), http.StatusOK, "text/html; charset=utf-8", "no-store"},
-		{"stylesheet", get("/web/fx.css?v=" + assetVersion()), http.StatusOK, "text/css; charset=utf-8", "public, max-age=31536000, immutable"},
+		{"stylesheet", get("/web/app.css?v=" + assetVersion()), http.StatusOK, "text/css; charset=utf-8", "public, max-age=31536000, immutable"},
 		{"script", get("/web/view.js?v=" + assetVersion()), http.StatusOK, "text/javascript; charset=utf-8", "public, max-age=31536000, immutable"},
-		{"vendored module", get("/web/vendor/three.module.min.js"), http.StatusOK, "text/javascript; charset=utf-8", "public, max-age=31536000, immutable"},
-		{"image", get("/web/penguin-ink.png"), http.StatusOK, "image/png", "public, max-age=31536000, immutable"},
+		{"vendored font", get("/web/fonts/Geist-Variable.woff2"), http.StatusOK, "font/woff2", "public, max-age=31536000, immutable"},
+		{"image", get("/web/icon-32.png"), http.StatusOK, "image/png", "public, max-age=31536000, immutable"},
+		{"vector icon", get("/web/icon.svg"), http.StatusOK, "image/svg+xml", "public, max-age=31536000, immutable"},
+		{"link preview card", get("/web/og.png"), http.StatusOK, "image/png", "public, max-age=31536000, immutable"},
 		// The file server drops Cache-Control on errors: a 404 is not immutable.
 		{"missing asset", get("/web/nope.js"), http.StatusNotFound, "", ""},
 		{"api create", createReq(client, ""), http.StatusCreated, "application/json", "no-store"},
@@ -138,8 +140,19 @@ func TestPageAssetsAreVersionedAndServed(t *testing.T) {
 	ref := regexp.MustCompile(`(?:src|href)="(/web/[^"]+)"`)
 	for _, path := range []string{"/", "/s/abc"} {
 		page := do(t, h, request{method: http.MethodGet, path: path, remote: "127.0.0.1:1"}).Body.String()
-		if strings.Contains(page, assetVersionPlaceholder) {
-			t.Fatalf("%s: unrendered %s", path, assetVersionPlaceholder)
+		for _, placeholder := range []string{assetVersionPlaceholder, baseURLPlaceholder} {
+			if strings.Contains(page, placeholder) {
+				t.Fatalf("%s: unrendered %s", path, placeholder)
+			}
+		}
+		// The pages are generated from a template and carry no CSS or script of
+		// their own, so a brace left in one is an unfilled placeholder.
+		if i := strings.IndexAny(page, "{}"); i >= 0 {
+			t.Errorf("%s: leftover placeholder near %q", path, page[max(0, i-20):min(len(page), i+30)])
+		}
+		// Link previews (WhatsApp, Slack, LinkedIn) need an absolute image URL.
+		if want := `<meta property="og:image" content="http://example.test/web/og.png">`; !strings.Contains(page, want) {
+			t.Errorf("%s: no absolute og:image (%s)", path, want)
 		}
 		refs := ref.FindAllStringSubmatch(page, -1)
 		if len(refs) < 8 {
@@ -158,5 +171,13 @@ func TestPageAssetsAreVersionedAndServed(t *testing.T) {
 	}
 	if v := assetVersion(); len(v) != 12 || v != assetVersion() {
 		t.Fatalf("asset version %q", v)
+	}
+}
+
+// BASE_URL is the operator's, but it lands inside an HTML attribute: escape it.
+func TestRenderPageEscapesTheBaseURL(t *testing.T) {
+	got := string(renderPage([]byte(`<meta content="{{BASE_URL}}/web/og.png">`), `https://a.example/"><script>x</script>`))
+	if strings.Contains(got, "<script>") || !strings.Contains(got, `https://a.example/&#34;&gt;&lt;script&gt;`) {
+		t.Fatalf("unescaped base URL: %s", got)
 	}
 }

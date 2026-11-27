@@ -3,67 +3,80 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Zero-knowledge one-time secret sharing. Encrypted in your browser, self-destructs after a single read.">
-<title>VT-SecretShare // descifrando transmisión</title>
-<link rel="icon" href="/web/penguin-ink.png">
+<meta name="description" content="Te compartieron un secreto. Se abre una sola vez y se descifra en tu navegador: al mostrarlo se borra del servidor.">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#000000">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SecretShare">
+<meta property="og:title" content="Te compartieron un secreto · SecretShare">
+<meta property="og:description" content="Te compartieron un secreto. Se abre una sola vez y se descifra en tu navegador: al mostrarlo se borra del servidor.">
+<meta property="og:image" content="{{BASE_URL}}/web/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="SecretShare: compartí un secreto, una sola vez.">
+<meta name="twitter:card" content="summary_large_image">
+<title data-i18n="doc_title">SecretShare · VT Security</title>
+<link rel="icon" href="/web/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/web/icon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/web/icon-180.png">
+<link rel="preload" href="/web/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
 <script src="/web/theme.js?v={{ASSET_VERSION}}"></script>
-<link rel="stylesheet" href="/web/fx.css?v={{ASSET_VERSION}}">
+<link rel="stylesheet" href="/web/app.css?v={{ASSET_VERSION}}">
 </head>
 <body>
-<canvas id="three" data-vault="danger"></canvas>
-<canvas id="matrix"></canvas>
-<div class="vignette"></div>
-<div class="scanlines"></div>
-
-<div class="stage">
-  <div class="panel danger" id="panel">
-    <div class="bar">
-      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
-      <span class="brand"><span class="peng"></span><span class="wm"><b>VT</b> Security</span></span>
-      <span class="toggles">
-        <span class="themetog">
-          <button data-theme-set="hacker">HACKER</button><span class="sep">/</span><button data-theme-set="pro">PRO</button>
-        </span>
-        <span class="langtog" aria-label="language">
-          <button data-lang="es" aria-label="Español" title="Español">🇪🇸</button><button data-lang="en" aria-label="English" title="English">🇺🇸</button>
-        </span>
-      </span>
-    </div>
-
-    <h1 class="glitch" data-text="SECRET//IN">SECRET<span class="red">//IN</span></h1>
-    <p class="sub"><span id="typed"></span><span class="cursor"></span></p>
-
-    <div id="ready">
-      <div class="warn" data-i18n-rich="warn_view"></div>
-      <div class="meta" id="expires"></div>
-      <button class="btn red" id="reveal" data-i18n="btn_reveal"></button>
-    </div>
-
-    <div class="secretbox" id="secretbox">
-      <label data-i18n="label_decrypted"></label>
-      <pre id="plain"></pre>
-      <button class="btn copy" id="copy" data-i18n="btn_copy_full" disabled></button>
-      <button class="btn ghost" id="own" data-i18n="btn_create_own"></button>
-    </div>
-
-    <div class="gone" id="gone"></div>
-
-    <div class="foot" data-i18n-rich="foot_view"></div>
-
-    <div class="cipherfx" id="cipherfx">
-      <div class="lbl" id="cipherlbl">DESCIFRANDO</div>
-      <pre id="cipherstream"></pre>
-      <div class="pbar"><i id="cipherbar"></i></div>
-    </div>
+<header class="nav">
+  <a class="brand" href="/"><svg class="mark" viewBox="0 0 473 614" aria-hidden="true"><path transform="translate(-107.53 650.73) scale(0.1 -0.1)" fill="currentColor" d="M3218 6495 c-398 -75 -725 -321 -905 -680 -85 -168 -119 -322 -133 -600 -25 -484 -128 -752 -450 -1165 -376 -483 -558 -893 -636 -1435 -25 -169 -25 -487 0 -569 30 -101 101 -143 173 -103 57 32 200 188 320 351 l73 99 0 -157 c0 -561 191 -1034 555 -1374 l73 -68 -80 -39 c-190 -91 -280 -195 -301 -348 l-6 -37 1539 0 1539 0 -6 37 c-21 152 -108 254 -294 345 l-86 42 79 74 c224 211 400 509 482 815 44 163 58 273 65 495 l6 214 44 -64 c106 -151 270 -334 341 -382 70 -46 145 -4 177 100 24 82 24 408 -1 579 -78 538 -269 962 -646 1440 -305 386 -417 681 -440 1160 -19 418 -130 687 -381 931 -177 171 -345 263 -593 326 -108 27 -394 34 -508 13z m-306 -993 c63 -63 45 -167 -36 -203 -89 -39 -176 20 -176 120 0 106 136 159 212 83z m1224 5 c85 -77 38 -217 -74 -219 -85 -1 -138 58 -129 141 12 103 127 148 203 78z m-590 -287 c69 -35 134 -91 134 -117 0 -10 -10 -30 -23 -45 -31 -38 -198 -178 -211 -178 -37 0 -246 188 -246 222 0 33 93 107 167 134 62 22 114 17 179 -16z m64 -1446 c152 -45 301 -158 378 -287 121 -202 119 -466 -5 -670 -44 -73 -148 -176 -208 -208 -57 -29 -61 16 39 -439 41 -190 104 -477 139 -637 l63 -293 -577 0 -577 0 13 52 c7 29 50 224 95 433 46 209 106 487 135 617 l51 237 -56 35 c-242 150 -354 463 -266 742 101 318 460 511 776 418z"/></svg>SecretShare</a>
+  <div class="nav-tools">
+    <a class="iconbtn" href="https://github.com/ValentinTorassa/VT-SecretShare" target="_blank" rel="noopener noreferrer" aria-label="GitHub"><svg class="i i-fill" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656"/></svg></a>
+    <button class="iconbtn" id="theme" type="button" data-i18n-aria="theme_toggle"><svg class="i i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><svg class="i i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
   </div>
-</div>
+</header>
 
-<script src="/web/matrix.js?v={{ASSET_VERSION}}"></script>
+<main class="shell" id="app" data-state="checking">
+  <div class="badge" data-show="ready" hidden><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="16" r="1"/><rect x="3" y="10" width="18" height="12" rx="2"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></svg></div>
+  <div class="badge ok" data-show="revealed" hidden><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="16" r="1"/><rect width="18" height="12" x="3" y="10" rx="2"/><path d="M7 10V7a5 5 0 0 1 9.33-2.5"/></svg></div>
+  <div class="badge bad" data-show="gone" hidden><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4"/></svg></div>
+  <div class="badge warn" data-show="badlink" hidden><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m18.84 12.25 1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71"/><path d="m5.17 11.75-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71"/><line x1="8" x2="8" y1="2" y2="5"/><line x1="2" x2="5" y1="8" y2="8"/><line x1="16" x2="16" y1="19" y2="22"/><line x1="19" x2="22" y1="16" y2="16"/></svg></div>
+  <div class="badge warn" data-show="wrongkey" hidden><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg></div>
+  <div class="badge bad" data-show="undecryptable" hidden><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg></div>
+  <h1 id="title"></h1>
+  <p class="lede" id="lede"></p>
+  <noscript><p class="error">Esta página necesita JavaScript, porque el secreto se descifra en tu navegador. / This page needs JavaScript, because the secret is decrypted in your browser.</p></noscript>
+
+  <section class="card" data-show="ready" hidden>
+    <div class="card-body">
+      <p class="hint"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4"/></svg><span data-i18n="ready_hint"></span></p>
+    </div>
+    <div class="card-foot">
+      <span class="meta" id="expires-row" hidden><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span id="expires"></span></span>
+      <button class="btn primary" id="reveal" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg><span data-i18n="btn_reveal"></span></button>
+    </div>
+  </section>
+
+  <section class="card" data-show="revealed" hidden>
+    <pre id="plain" tabindex="0"></pre>
+    <div class="card-foot">
+      <span class="meta"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span data-i18n="revealed_note"></span></span>
+      <button class="btn primary" id="copy" type="button"><svg class="i i-copy" viewBox="0 0 24 24" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><svg class="i i-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="btn_copy_secret"></span></button>
+    </div>
+  </section>
+
+  <p class="error" id="err-row" role="alert" hidden><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg><span id="err"></span></p>
+
+  <p class="after" data-show="revealed gone badlink wrongkey undecryptable" hidden><a class="btn" href="/"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span data-i18n="btn_create_own"></span></a></p>
+</main>
+
+<footer class="foot">
+  <span class="foot-brand"><svg class="mark" viewBox="0 0 473 614" aria-hidden="true"><path transform="translate(-107.53 650.73) scale(0.1 -0.1)" fill="currentColor" d="M3218 6495 c-398 -75 -725 -321 -905 -680 -85 -168 -119 -322 -133 -600 -25 -484 -128 -752 -450 -1165 -376 -483 -558 -893 -636 -1435 -25 -169 -25 -487 0 -569 30 -101 101 -143 173 -103 57 32 200 188 320 351 l73 99 0 -157 c0 -561 191 -1034 555 -1374 l73 -68 -80 -39 c-190 -91 -280 -195 -301 -348 l-6 -37 1539 0 1539 0 -6 37 c-21 152 -108 254 -294 345 l-86 42 79 74 c224 211 400 509 482 815 44 163 58 273 65 495 l6 214 44 -64 c106 -151 270 -334 341 -382 70 -46 145 -4 177 100 24 82 24 408 -1 579 -78 538 -269 962 -646 1440 -305 386 -417 681 -440 1160 -19 418 -130 687 -381 931 -177 171 -345 263 -593 326 -108 27 -394 34 -508 13z m-306 -993 c63 -63 45 -167 -36 -203 -89 -39 -176 20 -176 120 0 106 136 159 212 83z m1224 5 c85 -77 38 -217 -74 -219 -85 -1 -138 58 -129 141 12 103 127 148 203 78z m-590 -287 c69 -35 134 -91 134 -117 0 -10 -10 -30 -23 -45 -31 -38 -198 -178 -211 -178 -37 0 -246 188 -246 222 0 33 93 107 167 134 62 22 114 17 179 -16z m64 -1446 c152 -45 301 -158 378 -287 121 -202 119 -466 -5 -670 -44 -73 -148 -176 -208 -208 -57 -29 -61 16 39 -439 41 -190 104 -477 139 -637 l63 -293 -577 0 -577 0 13 52 c7 29 50 224 95 433 46 209 106 487 135 617 l51 237 -56 35 c-242 150 -354 463 -266 742 101 318 460 511 776 418z"/></svg><span data-i18n="footer_by"></span></span>
+  <span class="lang" role="group" data-i18n-aria="lang_label">
+    <button type="button" data-lang="es">ES</button><button type="button" data-lang="en">EN</button>
+  </span>
+</footer>
+
 <script src="/web/i18n.js?v={{ASSET_VERSION}}"></script>
-<script src="/web/anim.js?v={{ASSET_VERSION}}"></script>
 <script src="/web/crypto.js?v={{ASSET_VERSION}}"></script>
 <script src="/web/clipboard.js?v={{ASSET_VERSION}}"></script>
-<script type="module" src="/web/vault.js?v={{ASSET_VERSION}}"></script>
+<script src="/web/ui.js?v={{ASSET_VERSION}}"></script>
 <script src="/web/view.js?v={{ASSET_VERSION}}"></script>
 </body>
 </html>

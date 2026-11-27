@@ -34,6 +34,13 @@ import (
 //go:embed web
 var webFS embed.FS
 
+// installScript installs vtss, the command line client (cmd/vtss). It is
+// served at /install.sh so the one-liner on the create page works on any
+// instance; the binaries themselves come from the project's GitHub releases.
+//
+//go:embed install.sh
+var installScript []byte
+
 type config struct {
 	bindAddr      string
 	port          string
@@ -125,6 +132,7 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("GET /healthz", s.handleHealth)
 	mux.HandleFunc("GET /s/{id}", s.servePage("web/view.html"))
 	mux.HandleFunc("GET /{$}", s.servePage("web/index.html"))
+	mux.HandleFunc("GET /install.sh", handleInstallScript)
 	mux.Handle("GET /web/", http.FileServerFS(webFS))
 	return securityHeaders(mux)
 }
@@ -386,11 +394,18 @@ func (s *server) servePage(name string) http.HandlerFunc {
 	if err != nil {
 		log.Fatalf("missing embedded page %s: %v", name, err)
 	}
-	body := renderPage(page)
+	body := renderPage(page, s.cfg.baseURL)
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write(body)
 	}
+}
+
+// handleInstallScript serves install.sh as plain text, so opening the URL in a
+// browser shows the script instead of downloading it.
+func handleInstallScript(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, _ = w.Write(installScript)
 }
 
 // ---- helpers ----

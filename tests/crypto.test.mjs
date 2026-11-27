@@ -34,6 +34,17 @@ test('different keys give different verifiers',async()=>{
  const a=await api.vtEncrypt('x'),b=await api.vtEncrypt('x');
  assert.notEqual(await api.vtVerifier(a.keyFragment),await api.vtVerifier(b.keyFragment));
 });
+// Produced by the Go client (internal/secretshare, what vtss uses) with a
+// throwaway key. If this stops decrypting, links made from the command line no
+// longer open in the browser. internal/secretshare/secretshare_test.go holds
+// the mirror image: a vector made here that the Go client must open.
+test('opens what the command line client encrypted, with the same verifier',async()=>{
+ const key='gz1DcMpf7BGMXIkEqzblLStwl_Bp8soYS1YppxJqyh4';
+ const ciphertext='4MCXmDJ7ykDoXNCINooMrhu93WnshwVTZlKiO52oBRTKB2thEl41v6Ey2CWvxW6hi9wJu0o9tRaiqJbadgirSb+dmiH+QOOjt/4=';
+ assert.equal(await api.vtDecrypt(ciphertext,key),'Mensaje privado 🔒 — áéí\nsegunda línea');
+ assert.equal(await api.vtVerifier(key),'PySoqsXl-NqdsVPTLLDZUT5MSRBhZQP3lCgycC0oDFI');
+ assert.equal(await api.vtVerifierHash(key),'tEv3waDYKbrKE1eFIzMVvmeTHj41_-ieq31BWE01Z1c');
+});
 test('localized rich text only builds b, span and br elements',()=>{
  const made=[];
  const document={querySelectorAll:()=>[],documentElement:{},createTextNode:t=>({text:t}),createElement:tag=>{const n={tag,className:'',textContent:''};made.push(n);return n;}};

@@ -2,15 +2,15 @@
 
 Zero-knowledge **one-time secret sharing**, self-hosted. Paste a password / token /
 API key → get a link that works **once** and then self-destructs. Built around two
-Redis commands and a fancy hacker UI.
+Redis commands, with a calm web UI and a command line client (`vtss`) for
+scripts and agents.
 
 > `.env` no es seguridad. - VT Security
 
-![VT-SecretShare demo: a secret is encrypted in the browser, its one-time link opens once, and opening the same link again says the secret is gone](docs/demo.gif)
+<img src="docs/demo.gif" width="760" alt="VT-SecretShare demo: a secret is encrypted in the browser, its one-time link opens once, and opening the same link again says the secret is gone">
 
 Create a secret, copy the link, open it once, then open the same link again: the
-server already deleted it. Recorded against a local `docker compose up` with a fake
-secret.
+server already deleted it. Recorded against a local instance with a fake secret.
 
 ## Why it's actually secure (the demo-worthy part)
 
@@ -43,11 +43,79 @@ read. That's the whole persistence model. Redis is doing the security-relevant
 work (atomic check-and-burn + TTL expiry), which makes it a clean story for a
 video.
 
+## CLI
+
+`vtss` does from the terminal what the page does in the browser: it encrypts on
+your machine, stores only the ciphertext and prints the link. A link made by
+either one opens in the other.
+
+```bash
+curl -fsSL https://secretshare.valentorassa.com/install.sh | sh
+# or, with Go installed:
+go install github.com/ValentinTorassa/VT-SecretShare/cmd/vtss@latest
+```
+
+The installer downloads the binary for your machine (Linux and macOS, amd64 and
+arm64) from this repository's releases, checks its SHA-256 against the
+release's `checksums.txt` and puts it in `~/.local/bin`. Nothing runs as root.
+Releases carry the binaries from v1.1.0 on; a Windows build is attached too.
+
+```bash
+echo "s3cr3t" | vtss                 # prints https://…/s/<id>#<key>
+vtss < .env                          # a whole file
+vtss                                 # asks for it, input hidden
+vtss --ttl 10m --copy                # lives 10 minutes; link copied to the clipboard
+vtss open 'https://…/s/<id>#<key>'   # prints the secret and deletes it from the server
+vtss open '<link>' -o .env           # writes it to a file (mode 0600) instead
+vtss status '<link>'                 # "unopened: expires in 1 day", without opening it
+```
+
+- **Made to be piped.** The link (or the secret) is the only thing on stdout.
+  What is said to a person goes to stderr, and only when a terminal is attached.
+  `--json` gives `{"url","id","expires_at","ttl_seconds"}` on send and
+  `{"secret"}` on open.
+- **The secret is read from stdin, never from the arguments**, so it does not
+  end up in the shell history or the process list. One trailing newline (the
+  one `echo` adds) is dropped.
+- **`open` cannot lose the secret to a bad path.** With `-o` the file is opened
+  before the request, so an unwritable path fails while the secret still
+  exists, and a link that is already gone leaves an existing file untouched.
+- **Your own instance:** `--server https://secretshare.example.com` or
+  `VTSS_SERVER`. `open` and `status` take the server from the link.
+- **`--ttl`** takes `10m`, `1h`, `1d`, `7d` (default `1d`); the server applies
+  its own limits.
+
+| Exit code | Meaning |
+| --- | --- |
+| `0` | done |
+| `1` | network, server or file error |
+| `2` | wrong usage |
+| `3` | the secret is gone: already opened, expired, or a wrong link |
+| `4` | the key in the link does not match; the secret is intact |
+| `5` | rate limited or store down; nothing was opened, try later |
+
+### Agents
+
+An agent that can run shell commands uses `vtss` as it is. These lines in its
+instructions (`AGENTS.md`, `CLAUDE.md`, a skill) cover the two cases that
+matter:
+
+```markdown
+## Secrets
+- To give a person a secret, never paste it in the chat. Run
+  `printf %s "$VALUE" | vtss` and send the link it prints. It opens once.
+- To receive one, ask for a VT-SecretShare link and run
+  `vtss open '<link>' -o <file>`. The secret goes to the file (mode 0600) and
+  never appears in the conversation.
+- Exit code 3: the link was already used or expired, ask for a new one.
+  4 or 5: the secret is still there (wrong link, or try again later).
+```
+
 ## Architecture
 
 ```
 browser ──(AES-256-GCM encrypt)──▶ ciphertext ──POST──▶ Go ──SET..EX──▶ Redis
-share link = /s/{id}?theme=pro&lang=en#{key}  (preferences in query, key in fragment)
+share link = /s/{id}#{key}  (the key is the fragment; no query string)
 
 browser ──POST {verifier}──▶ Go ──Lua: GET, compare, DEL──▶ Redis ──ciphertext──▶ browser ──(decrypt with #key)──▶ secret
                          ▲ the verifier is checked and the value deleted in the same atomic step
@@ -59,22 +127,34 @@ browser ──POST {verifier}──▶ Go ──Lua: GET, compare, DEL──▶ 
   script, `TTL`, plus the atomic rate-limit counter script).
 - `ratelimit.go` - per-client rate limiting and client-IP resolution.
 - `web/` - UI: `index.html` + `index.js` (create), `view.html` + `view.js`
-  (reveal), `vault.js` (loads `bg.js`, the Three.js 3D vault-core), `matrix.js`
-  (digital rain), `crypto.js` (WebCrypto), `anim.js` (cipher/decipher effects),
-  `i18n.js` (ES/EN), `theme.js` (UI mode), `clipboard.js`, `fx.css`. No inline
-  scripts or styles: the CSP would block them.
-- `web/vendor/three.module.min.js` - Three.js vendored locally **on purpose**: a
-  secrets tool shouldn't pull JS from a third-party CDN that could watch its users.
+  (reveal), `crypto.js` (WebCrypto), `ui.js` (page state, copy feedback),
+  `i18n.js` (ES/EN), `theme.js` (black/light), `clipboard.js`, `app.css`. No
+  inline scripts or styles: the CSP would block them. The logo and the icons
+  are inline SVG in the HTML; `icon.svg`, `icon-32.png` and `icon-180.png` are
+  the favicons and `og.png` is the card shown where a link is pasted.
+- `web/fonts/` - Geist and Geist Mono (SIL Open Font License, see
+  `web/fonts/LICENSE.txt`), vendored **on purpose**: a secrets tool shouldn't
+  pull anything from a third-party CDN that could watch its users. The icons
+  come from Lucide (ISC) and the GitHub mark from Octicons (MIT); see
+  [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- `internal/secretshare/` - the client for programs that are not a browser: the
+  same encryption as `web/crypto.js` plus the three API calls.
+- `cmd/vtss/` - the command line client. See [CLI](#cli).
+- `install.sh` - installs `vtss`; the server also serves it at `/install.sh`.
 
-### UI modes & language
+### Theme & language
 
-- **Hacker** (default): 3D vault background, matrix rain, glitch, neon, cipher/decipher
-  animations. **Pro**: sober, mostly-static light theme for sharing with companies -
-  effects are paused, not just hidden. Toggle in the header; choice persists, and
-  `?theme=pro` (or `hacker`) pins it via URL.
-- **ES/EN** toggle (Spanish default), persisted. Generated links include both the
-  selected mode and language, so receivers open the intended UI. Branding: VT
-  Security penguin lockup (off-white on dark, ink on light).
+- **One interface, black by default.** The toggle in the header switches to
+  light and the choice persists. (The Hacker and Pro modes of 1.0 are gone; a
+  `?theme=` left in an old link is ignored.)
+- **Spanish or English** follows the browser (Spanish for `es-*`, English for
+  everything else); the switch in the footer pins one. Links carry no
+  preferences, so each person reads the page in their own language. `?lang=`
+  from an old link is still honoured.
+- Every page is one of a few named states (`data-state` on `<main>`): the
+  create page is `compose` or `done`; the view page is `checking`, `ready`,
+  `revealed`, or a dead end that says what happened (`gone`, `badlink`,
+  `wrongkey`, `undecryptable`).
 
 ## Run it (local dev)
 
@@ -149,6 +229,7 @@ the previous binary for rollback, swap, restart the unit. Keep
 | `POST` | `/api/secret/{id}/reveal` | header `X-VT-Reveal: 1`, body `{verifier}` (empty for secrets without one); **burns** it → `{ciphertext}`, `403 {"code":"wrong_key"}` (secret kept) or 404; read limit |
 | `GET` | `/api/secret/{id}/meta` | TTL/alive without burning; the view page calls it on load to show the expiry or say the link is dead; read limit |
 | `GET` | `/healthz` | `200 {"status":"ok"}` if Redis answers `PING` within 1 s, else `503`; not rate limited |
+| `GET` | `/install.sh` | the `vtss` installer, as plain text; not rate limited |
 
 Over a limit the API answers `429` with `Retry-After` (seconds until the window
 resets) and `{"error":"too many requests - try again in N seconds"}`.
@@ -189,7 +270,7 @@ Every response (pages, API, static files, errors) carries:
 
 | Header | Value | Why |
 | --- | --- | --- |
-| `Content-Security-Policy` | `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; require-trusted-types-for 'script'; trusted-types 'none'` | the key is in the page URL, so only this origin's own files run: no inline scripts, styles or event handlers, no `eval`, no CDN; Chromium also rejects any string assigned to an HTML sink, and no Trusted Types policy can be created to get around that |
+| `Content-Security-Policy` | `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; require-trusted-types-for 'script'; trusted-types 'none'` | the key is in the page URL, so only this origin's own files run: no inline scripts, styles or event handlers, no `eval`, no CDN; Chromium also rejects any string assigned to an HTML sink, and no Trusted Types policy can be created to get around that |
 | `Referrer-Policy` | `no-referrer` | never send the page URL anywhere |
 | `X-Frame-Options` | `DENY` | `frame-ancestors 'none'` for older browsers |
 | `X-Content-Type-Options` | `nosniff` | no MIME sniffing |
@@ -210,9 +291,9 @@ create secrets without a CORS preflight, which the server never grants.
 
 `/web/` files are served `immutable` for a year, and browsers and the Cloudflare
 edge keep them, so the pages load them as `/web/<file>?v=<hash of web/>`
-(computed at start-up; `vault.js` passes its `?v=` on to `bg.js`). Any change
-under `web/` changes every asset URL. The vendored Three.js and the images are
-not versioned: give them a new file name if you ever replace them.
+(computed at start-up). Any change under `web/` changes every asset URL. The
+fonts and the images are not versioned: give them a new file name if you ever
+replace them.
 
 ## Notes / hardening ideas
 

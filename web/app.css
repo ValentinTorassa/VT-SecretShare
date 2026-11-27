@@ -1,0 +1,196 @@
+/* VT-SecretShare - one calm UI for both pages.
+   Black by default. The header toggle switches to light, which theme.js keeps
+   in localStorage and sets as data-theme="light" on <html>. */
+
+@font-face{font-family:"Geist";src:url(/web/fonts/Geist-Variable.woff2) format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Geist Mono";src:url(/web/fonts/GeistMono-Variable.woff2) format("woff2");font-weight:100 900;font-display:swap}
+
+:root{
+  --sans:"Geist",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+
+  --bg:#000; --surface:#0a0a0a; --tint:#1f1f1f;
+  --fg:#ededed; --muted:#a1a1a1; --faint:#7d7d7d;
+  --line:#262626; --line-strong:#454545;
+  --primary:#ededed; --primary-hover:#cfcfcf; --on-primary:#0a0a0a;
+  --ring:rgba(255,255,255,.12); --focus:#7c93b0; --selection:rgba(124,147,176,.32);
+  --success:#62c073; --warning:#f2a20d; --danger:#ff6166;
+  --sun:block; --moon:none;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#fafafa; --surface:#fff; --tint:#f0f0f0;
+  --fg:#171717; --muted:#666; --faint:#8f8f8f;
+  --line:#e6e6e6; --line-strong:#c9c9c9;
+  --primary:#171717; --primary-hover:#383838; --on-primary:#fff;
+  --ring:rgba(0,0,0,.08); --focus:#4f6b8a; --selection:rgba(79,107,138,.22);
+  --success:#297a3a; --warning:#a35200; --danger:#c62a2f;
+  --sun:none; --moon:block;
+  color-scheme:light;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;
+  background:var(--bg);color:var(--fg);font:14px/1.5 var(--sans);
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+}
+:where(a,button,pre):focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+::selection{background:var(--selection)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+svg{display:block;flex:none}
+
+/* line icons (Lucide, 24px grid) drawn at 16px; .i-fill for solid marks */
+.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.i-fill{fill:currentColor;stroke:none}
+
+/* header */
+.nav{display:flex;align-items:center;justify-content:space-between;height:64px;padding:0 24px}
+.brand{display:inline-flex;align-items:center;gap:10px;border-radius:6px;color:var(--fg);
+  font-size:15px;font-weight:600;letter-spacing:-.02em;text-decoration:none}
+.brand .mark{width:auto;height:26px}
+.nav-tools{display:flex;align-items:center;gap:4px}
+.iconbtn{display:inline-grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:6px;
+  background:transparent;color:var(--muted);text-decoration:none;cursor:pointer;transition:background .15s,color .15s}
+.iconbtn:hover{background:var(--tint);color:var(--fg)}
+.i-sun{display:var(--sun)} .i-moon{display:var(--moon)}
+
+/* page column */
+.shell{flex:1;width:100%;max-width:608px;margin:0 auto;padding:clamp(16px,5vh,56px) 24px 64px}
+h1{margin:0;font-size:32px;line-height:1.15;font-weight:600;letter-spacing:-.04em;text-wrap:balance}
+.lede{margin:12px 0 28px;color:var(--muted);font-size:16px;line-height:1.5;text-wrap:pretty}
+/* The view page decides what to say after asking the server, so nothing is
+   shown for that instant rather than a headline that may be wrong. */
+[data-state="checking"]>:not(noscript){visibility:hidden}
+
+/* above the headline: what state the page is in, or news on the create page */
+.badge{display:grid;place-items:center;width:40px;height:40px;margin-bottom:16px;border:1px solid var(--line);
+  border-radius:10px;background:var(--surface);color:var(--fg)}
+.badge .i{width:20px;height:20px}
+.badge.ok{color:var(--success)} .badge.warn{color:var(--warning)} .badge.bad{color:var(--danger)}
+.pill{display:inline-flex;align-items:center;gap:8px;max-width:100%;min-height:30px;margin-bottom:16px;padding:4px 12px 4px 10px;
+  border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);
+  font-size:13px;line-height:1.3;text-decoration:none;transition:border-color .15s,color .15s}
+.pill:hover{border-color:var(--line-strong);color:var(--fg)}
+.pill b{color:var(--fg);font-weight:500}
+.pill .i{width:14px;height:14px}
+
+/* card: body plus a footer strip that holds the action */
+.card{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden;
+  transition:border-color .15s,box-shadow .15s}
+.card:has(textarea:focus){border-color:var(--line-strong);box-shadow:0 0 0 4px var(--ring)}
+.card-body{padding:16px}
+.card-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:12px 12px 12px 16px;border-top:1px solid var(--line);background:var(--bg);
+  color:var(--muted);font-size:13px}
+.card-foot time{color:var(--fg)}
+.meta{display:flex;align-items:center;gap:8px;min-width:0}
+.meta .i{color:var(--faint)}
+
+textarea{display:block;width:100%;min-height:148px;padding:16px;border:0;outline:0;resize:vertical;
+  background:transparent;color:var(--fg);font:14px/1.6 var(--mono)}
+textarea::placeholder{color:var(--faint);font-family:var(--sans)}
+
+/* expiry: four choices, all visible, one click */
+.ttl{display:flex;align-items:center;gap:10px;min-width:0}
+.ttl .meta{flex:none}
+.seg{display:inline-flex;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.seg label{position:relative;display:block}
+.seg input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.seg span{display:block;height:30px;padding:0 10px;border-radius:6px;color:var(--muted);
+  line-height:30px;text-align:center;white-space:nowrap;transition:background .15s,color .15s}
+.seg label:hover span{color:var(--fg)}
+.seg input:checked+span{background:var(--tint);color:var(--fg);font-weight:500}
+.seg input:focus-visible+span{outline:2px solid var(--focus);outline-offset:1px}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;
+  border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--fg);
+  font:500 14px/1 var(--sans);text-decoration:none;white-space:nowrap;cursor:pointer;
+  transition:background .15s,border-color .15s,color .15s}
+.btn:hover{border-color:var(--line-strong)}
+.btn.primary{border-color:var(--primary);background:var(--primary);color:var(--on-primary)}
+.btn.primary:hover{border-color:var(--primary-hover);background:var(--primary-hover)}
+.btn:disabled{border-color:var(--line);background:var(--tint);color:var(--faint);cursor:not-allowed}
+.kbd{font:500 12px/1 var(--sans);opacity:.6}
+.btn .i-check{display:none}
+.btn.ok .i-copy{display:none}
+.btn.ok .i-check{display:block}
+
+/* link field */
+.field{display:flex;gap:8px}
+.input{flex:1;min-width:0;height:36px;padding:0 12px;border:1px solid var(--line);border-radius:6px;outline:0;
+  background:var(--surface);color:var(--fg);font:13px/1 var(--mono);text-overflow:ellipsis;
+  transition:border-color .15s,box-shadow .15s}
+.input:focus{border-color:var(--line-strong);box-shadow:0 0 0 4px var(--ring)}
+
+/* view page */
+.hint{display:flex;align-items:center;gap:10px;margin:0;color:var(--muted)}
+.hint .i{color:var(--faint)}
+#plain{margin:0;max-height:50vh;padding:16px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;
+  color:var(--fg);font:14px/1.6 var(--mono)}
+.after{margin:20px 0 0}
+/* states that are only a message: the button follows the paragraph closely */
+:is([data-state="gone"],[data-state="badlink"],[data-state="wrongkey"],[data-state="undecryptable"]) .lede{margin-bottom:4px}
+
+.error{display:flex;align-items:flex-start;gap:8px;margin:12px 2px 0;color:var(--danger);font-size:13px}
+.error .i{width:14px;height:14px;margin-top:2px}
+
+/* how it works */
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin:44px 0 0;padding:0;list-style:none}
+.fact-icon{display:grid;place-items:center;width:32px;height:32px;margin-bottom:12px;border:1px solid var(--line);
+  border-radius:8px;background:var(--surface);color:var(--fg)}
+.facts h2{margin:0 0 4px;font-size:14px;font-weight:500;letter-spacing:-.01em}
+.facts p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+.facts .c{color:var(--fg);font-family:var(--mono)}
+
+/* terminal snippet */
+.cli{margin-top:56px;scroll-margin-top:24px}
+.cli h2{display:flex;align-items:center;gap:8px;margin:0;font-size:16px;font-weight:600;letter-spacing:-.02em}
+.cli>p{margin:4px 0 16px;color:var(--muted)}
+.cli a{color:var(--fg);text-underline-offset:3px}
+.snippet{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.snippet-row{display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 6px 6px 16px;
+  border-top:1px solid var(--line);font:13px/1.5 var(--mono)}
+.snippet-row:first-child{border-top:0}
+.snippet-row::before{content:"$";color:var(--faint);user-select:none}
+.snippet-row code{flex:1;min-width:0;overflow-x:auto;font:inherit;white-space:nowrap;scrollbar-width:none}
+.copyline .i-check{display:none}
+.copyline.ok{color:var(--fg)}
+.copyline.ok .i-copy{display:none}
+.copyline.ok .i-check{display:block}
+
+/* footer */
+.foot{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  padding:20px 24px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+.foot-brand{display:inline-flex;align-items:center;gap:8px}
+.foot-brand .mark{width:auto;height:16px;color:var(--faint)}
+.lang{display:inline-flex;gap:2px}
+.lang button{padding:4px 8px;border:0;border-radius:6px;background:transparent;color:var(--faint);
+  font:inherit;cursor:pointer;transition:background .15s,color .15s}
+.lang button:hover{color:var(--fg)}
+.lang button.on{background:var(--tint);color:var(--fg)}
+
+@media (max-width:600px){
+  .nav{padding:0 16px}
+  .shell{padding-left:16px;padding-right:16px}
+  h1{font-size:28px}
+  .card-foot.stack{flex-direction:column;align-items:stretch;padding:12px}
+  .card-foot.stack .ttl{flex-direction:column;align-items:stretch;gap:6px}
+  .card-foot.stack .seg{display:flex}
+  .card-foot.stack .seg label{flex:1}
+  .card-foot.stack .btn{height:40px}
+  .field{flex-direction:column}
+  .field .input{flex:none;height:40px}
+  .field .btn{height:40px}
+  .snippet-row{align-items:flex-start;padding-top:10px;padding-bottom:10px}
+  .snippet-row code{white-space:normal;overflow-wrap:anywhere}
+  .snippet-row .iconbtn{margin-top:-6px}
+  .kbd{display:none}
+  .facts{grid-template-columns:1fr;gap:20px}
+  .foot{padding:16px}
+}
+@media (hover:none){.kbd{display:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
