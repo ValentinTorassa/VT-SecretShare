@@ -2,6 +2,64 @@
 
 Notable changes to VT-SecretShare. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 1.1.0 - 2026-11-27
+
+### Interface
+
+- One calm interface replaces the Hacker and Pro modes. The Three.js vault, the
+  matrix rain and the cipher animations are gone, and with them about 680 KB of
+  JavaScript. It is black by default; the header toggle switches to light and
+  remembers the choice.
+- A new penguin logo, with a keyhole for a belly, drawn as SVG in the theme's
+  color, plus matching favicons. Line icons from Lucide and the GitHub mark
+  from Octicons are inlined the same way (ISC and MIT, see
+  `THIRD_PARTY_NOTICES.md`).
+- Pages carry Open Graph tags, so a pasted link shows a card in WhatsApp,
+  Slack or LinkedIn instead of a bare URL. The card says nothing about the
+  secret, and fetching the page does not open it.
+- Geist and Geist Mono are served from the app itself (SIL Open Font License),
+  so nothing is fetched from a CDN.
+- The create page is one card: paste, pick the expiry with one click (10 min,
+  1 hour, 1 day, 7 days) and press the button or Cmd/Ctrl+Enter. The link then
+  takes the card's place with the copy button already focused.
+- The view page says what state the link is in: ready, shown, already gone,
+  missing its key, or carrying the wrong key. A rate-limited reveal keeps the
+  button, so it can be retried without reloading. Pasting the full link over a
+  cut one in the same tab now recovers, and strips the key from the address
+  bar again.
+- The language follows the browser (Spanish for `es-*`, English otherwise);
+  the switch moved to the footer. Error messages follow the switch too.
+- Links are `/s/<id>#<key>` with no query string, so they can be pasted
+  unquoted into a shell. Links made by 1.0 (`?theme=…&lang=…`) still open.
+
+### Command line
+
+- `vtss`, a command line client: `echo "s3cr3t" | vtss` prints a one-time link,
+  `vtss open '<link>'` prints the secret and deletes it from the server,
+  `vtss status '<link>'` tells whether it is still unopened. Same encryption as
+  the browser, so links work across both; each side tests a vector made by the
+  other.
+- Made for scripts and agents: only the link or the secret on stdout, `--json`,
+  `-o <file>` to keep a secret off the screen, and an exit code per outcome
+  (3 gone, 4 wrong key, 5 try later).
+- `install.sh` installs it (`curl -fsSL …/install.sh | sh`), checking the
+  download against the release's checksums. The app serves it at `/install.sh`.
+  A release workflow attaches the binaries for Linux, macOS and Windows to each
+  tag.
+
+### Server
+
+- `GET /install.sh`.
+- Pages fill in `{{BASE_URL}}` (HTML-escaped), since `og:image` must be an
+  absolute URL.
+- The Content-Security-Policy gains `font-src 'self'` for the vendored fonts;
+  `.woff2` is served as `font/woff2`.
+
+### Dependencies
+
+- `golang.org/x/term` v0.48.0 (hidden input in `vtss`), which moves
+  `golang.org/x/sys` to v0.50.0.
+
 ## 1.0.1 - 2026-11-10
 
 ### Security

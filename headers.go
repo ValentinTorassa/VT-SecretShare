@@ -8,23 +8,36 @@ package main
 // therefore lets the pages run only this origin's own files: no inline
 // <script>, import maps, event-handler attributes or style attributes, no
 // eval, nothing from a CDN. web/ is written to fit it (see headers_test.go).
+// The typeface is vendored under web/fonts for the same reason, which is what
+// font-src 'self' is for.
 
 import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"html"
 	"io/fs"
 	"log"
+	"mime"
 	"net/http"
 	"strings"
 	"sync"
 )
+
+func init() {
+	// Go's built-in table has no entry for web fonts, and the distroless image
+	// has no /etc/mime.types to fill it in.
+	if err := mime.AddExtensionType(".woff2", "font/woff2"); err != nil {
+		log.Fatalf("cannot register the woff2 media type: %v", err)
+	}
+}
 
 var contentSecurityPolicy = strings.Join([]string{
 	"default-src 'none'",
 	"script-src 'self'",
 	"style-src 'self'",
 	"img-src 'self'",
+	"font-src 'self'",
 	"connect-src 'self'",
 	"base-uri 'none'",
 	"form-action 'self'",
@@ -98,10 +111,15 @@ func securityHeaders(next http.Handler) http.Handler {
 // assetVersionPlaceholder is replaced by assetVersion() in the served pages.
 const assetVersionPlaceholder = "{{ASSET_VERSION}}"
 
+// baseURLPlaceholder is replaced by the public base URL (BASE_URL) in the
+// served pages: link previews need an absolute address for og:image.
+const baseURLPlaceholder = "{{BASE_URL}}"
+
 // assetVersion is a short hash of everything under web/. Browsers and the
 // Cloudflare edge keep /web/ files for a year, so the pages load them as
 // /web/<file>?v=<assetVersion>: any change to web/ gives every asset a new URL
-// instead of a stale copy (vault.js passes its own ?v= on to bg.js).
+// instead of a stale copy. Images and fonts are not versioned: a replacement
+// needs a new file name.
 var assetVersion = sync.OnceValue(func() string {
 	sum := sha256.New()
 	err := fs.WalkDir(webFS, "web", func(path string, d fs.DirEntry, err error) error {
@@ -124,7 +142,10 @@ var assetVersion = sync.OnceValue(func() string {
 	return hex.EncodeToString(sum.Sum(nil))[:12]
 })
 
-// renderPage fills in the asset version of an embedded HTML page.
-func renderPage(page []byte) []byte {
-	return bytes.ReplaceAll(page, []byte(assetVersionPlaceholder), []byte(assetVersion()))
+// renderPage fills in the asset version and the public base URL of an
+// embedded HTML page. The base URL comes from the operator's configuration
+// and is escaped anyway, since it lands inside an attribute.
+func renderPage(page []byte, baseURL string) []byte {
+	page = bytes.ReplaceAll(page, []byte(assetVersionPlaceholder), []byte(assetVersion()))
+	return bytes.ReplaceAll(page, []byte(baseURLPlaceholder), []byte(html.EscapeString(baseURL)))
 }

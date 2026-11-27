@@ -1,32 +1,26 @@
-// UI mode: "hacker" (default, full 3D + animations) vs "pro" (sober, mostly
-// static - for sharing secrets with companies/colleagues). Sets a data-theme on
-// <html> (CSS does the visual switch) and pauses the heavy fx loops in pro mode.
-// A ?theme=pro|hacker query param overrides (and pins) the stored choice - handy
-// for linking colleagues straight into the sober UI.
-const _qp = new URLSearchParams(location.search).get("theme");
+// Black by default; the header toggle switches to light and back. A choice is
+// kept in localStorage and set as data-theme on <html>. Loaded in <head>, so
+// a stored light theme applies before first paint.
+//
+// Links made before v1.1 carry ?theme=hacker|pro and browsers may still hold
+// those values in storage. Both are ignored: there is one UI now.
 const THEME = {
-  val: (_qp === "pro" || _qp === "hacker") ? _qp : (localStorage.getItem("vt_theme") || "hacker"),
-  listeners: [],
-  get pro() { return this.val === "pro"; },
-  apply() {
-    document.documentElement.dataset.theme = this.val;
-    document.querySelectorAll("[data-theme-set]").forEach((b) =>
-      b.classList.toggle("on", b.dataset.themeSet === this.val)
-    );
-    if (window.__vault) window.__vault.setActive(!this.pro);
-    if (window.__matrix) window.__matrix.setActive(!this.pro);
-    this.listeners.forEach((fn) => fn(this.val));
+  get stored() {
+    try {
+      const v = localStorage.getItem("vt_theme");
+      return v === "light" || v === "dark" ? v : null;
+    } catch (_) { return null; }
   },
-  set(v) { this.val = v; localStorage.setItem("vt_theme", v); this.apply(); },
-  onChange(fn) { this.listeners.push(fn); },
+  get current() { return document.documentElement.dataset.theme || "dark"; },
+  toggle() {
+    const next = this.current === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("vt_theme", next); } catch (_) {}
+  },
 };
 window.THEME = THEME;
-document.documentElement.dataset.theme = THEME.val;
+if (THEME.stored) document.documentElement.dataset.theme = THEME.stored;
 
 document.addEventListener("DOMContentLoaded", () => {
-  if (_qp === "pro" || _qp === "hacker") localStorage.setItem("vt_theme", _qp);
-  document.querySelectorAll("[data-theme-set]").forEach((b) =>
-    b.addEventListener("click", () => THEME.set(b.dataset.themeSet))
-  );
-  THEME.apply();
+  document.getElementById("theme")?.addEventListener("click", () => THEME.toggle());
 });
