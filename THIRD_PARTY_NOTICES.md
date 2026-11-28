@@ -10,39 +10,19 @@ the app itself; nothing is loaded from a CDN.
 - License: SIL Open Font License 1.1. The full text is in
   [`web/fonts/LICENSE.txt`](web/fonts/LICENSE.txt).
 
-## Lucide
+## Iconoir
 
 - Used: line icons inlined as SVG in `web/index.html` and `web/view.html`:
-  arrow-right, check, circle-alert, circle-check, clock, copy, eye, flame,
-  key-round, link, lock-keyhole, lock-keyhole-open, moon, plus, shield-check,
-  sun, terminal, unlink.
-- Source: npm `lucide-static` 1.72.0
-- License: ISC. Lucide's icons that come from Feather are also under the MIT
-  license below; of the ones used here, that is arrow-right, check,
-  circle-alert (Feather's alert-circle), clock, link, moon, plus and terminal.
+  arrow-right, check, check-circle, clock, copy, database, eye, fire-flame,
+  half-moon, key, link, link-slash, lock, plus, shield-check, sun-light,
+  terminal, warning-circle.
+- Source: npm `iconoir` 7.12.2
+- License: MIT.
 
 ```
-ISC License
+MIT License
 
-Copyright (c) 2026 Lucide Icons and Contributors
-
-Permission to use, copy, modify, and/or distribute this software for any
-purpose with or without fee is hereby granted, provided that the above
-copyright notice and this permission notice appear in all copies.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-```
-
-```
-The MIT License (MIT) (for the icons derived from Feather)
-
-Copyright (c) 2013-present Cole Bemis
+Copyright (c) 2021 Luca Burgio
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

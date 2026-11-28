@@ -5,8 +5,6 @@ API key → get a link that works **once** and then self-destructs. Built around
 Redis commands, with a calm web UI and a command line client (`vtss`) for
 scripts and agents.
 
-> `.env` no es seguridad. - VT Security
-
 <img src="docs/demo.gif" width="760" alt="VT-SecretShare demo: a secret is encrypted in the browser, its one-time link opens once, and opening the same link again says the secret is gone">
 
 Create a secret, copy the link, open it once, then open the same link again: the
@@ -135,7 +133,7 @@ browser ──POST {verifier}──▶ Go ──Lua: GET, compare, DEL──▶ 
 - `web/fonts/` - Geist and Geist Mono (SIL Open Font License, see
   `web/fonts/LICENSE.txt`), vendored **on purpose**: a secrets tool shouldn't
   pull anything from a third-party CDN that could watch its users. The icons
-  come from Lucide (ISC) and the GitHub mark from Octicons (MIT); see
+  come from Iconoir (MIT) and the GitHub mark from Octicons (MIT); see
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - `internal/secretshare/` - the client for programs that are not a browser: the
   same encryption as `web/crypto.js` plus the three API calls.
