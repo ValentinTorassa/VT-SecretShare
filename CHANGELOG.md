@@ -2,6 +2,18 @@
 
 Notable changes to VT-SecretShare. Versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Interface
+
+- The create page explains itself below the card, in a wider column: how it
+  works in four steps (your browser, the server, the link, whoever opens it),
+  a terminal session with `vtss`, and four common questions. They replace the
+  three short facts.
+- Icons from Iconoir instead of Lucide: a 1.5 px stroke that sits with Geist.
+- The footer reads "VT Security · open source, Apache 2.0". The ".env is not
+  security" line is gone from the page and from the README.
+
 ## 1.1.0 - 2026-11-27
 
 ### Interface

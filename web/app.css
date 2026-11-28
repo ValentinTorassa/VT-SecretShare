@@ -138,20 +138,7 @@ textarea::placeholder{color:var(--faint);font-family:var(--sans)}
 .error{display:flex;align-items:flex-start;gap:8px;margin:12px 2px 0;color:var(--danger);font-size:13px}
 .error .i{width:14px;height:14px;margin-top:2px}
 
-/* how it works */
-.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin:44px 0 0;padding:0;list-style:none}
-.fact-icon{display:grid;place-items:center;width:32px;height:32px;margin-bottom:12px;border:1px solid var(--line);
-  border-radius:8px;background:var(--surface);color:var(--fg)}
-.facts h2{margin:0 0 4px;font-size:14px;font-weight:500;letter-spacing:-.01em}
-.facts p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
-.facts .c{color:var(--fg);font-family:var(--mono)}
-
-/* terminal snippet */
-.cli{margin-top:56px;scroll-margin-top:24px}
-.cli h2{display:flex;align-items:center;gap:8px;margin:0;font-size:16px;font-weight:600;letter-spacing:-.02em}
-.cli>p{margin:4px 0 16px;color:var(--muted)}
-.cli a{color:var(--fg);text-underline-offset:3px}
-.snippet{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+/* terminal rows */
 .snippet-row{display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 6px 6px 16px;
   border-top:1px solid var(--line);font:13px/1.5 var(--mono)}
 .snippet-row:first-child{border-top:0}
@@ -161,6 +148,70 @@ textarea::placeholder{color:var(--faint);font-family:var(--sans)}
 .copyline.ok{color:var(--fg)}
 .copyline.ok .i-copy{display:none}
 .copyline.ok .i-check{display:block}
+
+/* index: the card keeps its 608px column; what explains it sits below, wider */
+.main{flex:1;display:flex;flex-direction:column;width:100%}
+.main>.shell{flex:none;padding-bottom:0}
+.wide{width:100%;max-width:1008px;margin:0 auto;padding:0 24px 104px}
+.section{margin-top:104px;scroll-margin-top:24px}
+.section-head{display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
+.eyebrow{margin:0;font:12px/1 var(--mono);color:var(--faint)}
+.section h2{margin:0;font-size:24px;line-height:1.2;font-weight:600;letter-spacing:-.035em;text-wrap:balance}
+.c{color:var(--fg);font-family:var(--mono)}
+.i.i-15{stroke-width:1.5}
+
+/* how it works: four cells on one line, a notch on each divider */
+.fact-icon{display:grid;place-items:center;width:32px;height:32px;margin-bottom:12px;border:1px solid var(--line);
+  border-radius:8px;background:var(--surface);color:var(--fg)}
+.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:0;padding:0;list-style:none;
+  border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.flow li{position:relative;display:flex;flex-direction:column;gap:8px;min-width:0;padding:20px;border-left:1px solid var(--line)}
+.flow li:first-child{border-left:0}
+.flow .step{font:12px/1 var(--mono);color:var(--faint)}
+.flow .fact-icon{margin:8px 0 4px}
+.flow h3{margin:0;font-size:14px;font-weight:500;letter-spacing:-.01em}
+.flow p{margin:0 0 12px;color:var(--muted);font-size:13px;line-height:1.5}
+.flow .data{display:block;margin-top:auto;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);
+  color:var(--faint);font:12px/1.4 var(--mono);overflow-wrap:anywhere}
+.flow .data .c{color:var(--fg)}
+.flow li:not(:last-child)::after{content:"";position:absolute;z-index:1;top:64px;right:-6px;width:10px;height:10px;
+  border-top:1px solid var(--line-strong);border-right:1px solid var(--line-strong);background:var(--surface);
+  transform:translateY(-50%) rotate(45deg)}
+
+/* from the terminal: copy on the left, a session on the right */
+.cli-grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:56px;align-items:center}
+.cli-copy h2{margin-top:8px}
+.cli-lede{margin:8px 0 20px;color:var(--muted);font-size:15px;line-height:1.5}
+.ticks{display:flex;flex-direction:column;gap:10px;margin:0 0 20px;padding:0;list-style:none;color:var(--muted);font-size:14px;line-height:1.5}
+.ticks li{display:flex;gap:10px;align-items:flex-start}
+.ticks .i{flex:none;margin-top:3px;color:var(--fg)}
+.ticks .c{font-size:13px}
+.more{display:inline-flex;align-items:center;gap:6px;border-radius:4px;color:var(--fg);font-size:14px;text-decoration:none}
+.more:hover{text-decoration:underline;text-underline-offset:3px}
+.more .i{width:14px;height:14px}
+.term{min-width:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.term-bar{display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-bottom:1px solid var(--line)}
+.term-bar span{width:10px;height:10px;border-radius:50%;background:var(--line-strong)}
+.term-bar b{flex:1;margin-right:34px;text-align:center;font:500 12px/1 var(--mono);color:var(--faint)}
+.term .snippet-row{border-top:0}
+.term-out{margin-top:-6px;padding:0 16px 10px 34px;color:var(--faint);font:13px/1.5 var(--mono);overflow-wrap:anywhere}
+
+/* questions */
+.faq{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.faq>div{padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.faq h3{margin:0 0 6px;font-size:14px;font-weight:500;letter-spacing:-.01em}
+.faq p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
+
+@media (max-width:760px){
+  .wide{padding-bottom:80px}
+  .section{margin-top:80px}
+  .flow{grid-template-columns:1fr}
+  .flow li{border-left:0;border-top:1px solid var(--line)}
+  .flow li:first-child{border-top:0}
+  .flow li:not(:last-child)::after{top:auto;bottom:-6px;right:auto;left:31px;transform:rotate(135deg)}
+  .cli-grid{grid-template-columns:1fr;gap:28px}
+  .faq{grid-template-columns:1fr}
+}
 
 /* footer */
 .foot{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
@@ -175,7 +226,7 @@ textarea::placeholder{color:var(--faint);font-family:var(--sans)}
 
 @media (max-width:600px){
   .nav{padding:0 16px}
-  .shell{padding-left:16px;padding-right:16px}
+  .shell,.wide{padding-left:16px;padding-right:16px}
   h1{font-size:28px}
   .card-foot.stack{flex-direction:column;align-items:stretch;padding:12px}
   .card-foot.stack .ttl{flex-direction:column;align-items:stretch;gap:6px}
@@ -189,7 +240,6 @@ textarea::placeholder{color:var(--faint);font-family:var(--sans)}
   .snippet-row code{white-space:normal;overflow-wrap:anywhere}
   .snippet-row .iconbtn{margin-top:-6px}
   .kbd{display:none}
-  .facts{grid-template-columns:1fr;gap:20px}
   .foot{padding:16px}
 }
 @media (hover:none){.kbd{display:none}}
