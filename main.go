@@ -395,9 +395,19 @@ func (s *server) servePage(name string) http.HandlerFunc {
 		log.Fatalf("missing embedded page %s: %v", name, err)
 	}
 	body := renderPage(page, s.cfg.baseURL)
+	gzipped := gzipPage(body)
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write(body)
+		h := w.Header()
+		h.Set("Content-Type", "text/html; charset=utf-8")
+		h.Set("Cache-Control", pageCacheControl)
+		h.Add("Vary", "Accept-Encoding")
+		out := body
+		if acceptsGzip(r.Header.Get("Accept-Encoding")) {
+			h.Set("Content-Encoding", "gzip")
+			out = gzipped
+		}
+		h.Set("Content-Length", strconv.Itoa(len(out)))
+		_, _ = w.Write(out)
 	}
 }
 

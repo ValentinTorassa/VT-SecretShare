@@ -14,6 +14,15 @@ Notable changes to VT-SecretShare. Versions follow [Semantic Versioning](https:/
 - The footer reads "VT Security · open source, Apache 2.0". The ".env is not
   security" line is gone from the page and from the README.
 
+### Fixed
+
+- Pages are sent with `Cache-Control: no-store, no-transform`, so a proxy in
+  front delivers them untouched. Cloudflare was adding its Web Analytics
+  script to every page, which the CSP blocked and the browser console reported
+  as an error. The server now gzips the pages itself, since the proxy no
+  longer compresses them.
+- The README demo shows the current page.
+
 ## 1.1.0 - 2026-11-27
 
 ### Interface

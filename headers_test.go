@@ -1,10 +1,15 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
+	"io"
 	"io/fs"
 	"net/http"
+	"net/http/httptest"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -39,8 +44,8 @@ func TestSecurityHeadersOnEveryResponse(t *testing.T) {
 		contentType string
 		cache       string
 	}{
-		{"create page", get("/"), http.StatusOK, "text/html; charset=utf-8", "no-store"},
-		{"view page", get("/s/live"), http.StatusOK, "text/html; charset=utf-8", "no-store"},
+		{"create page", get("/"), http.StatusOK, "text/html; charset=utf-8", "no-store, no-transform"},
+		{"view page", get("/s/live"), http.StatusOK, "text/html; charset=utf-8", "no-store, no-transform"},
 		{"stylesheet", get("/web/app.css?v=" + assetVersion()), http.StatusOK, "text/css; charset=utf-8", "public, max-age=31536000, immutable"},
 		{"script", get("/web/view.js?v=" + assetVersion()), http.StatusOK, "text/javascript; charset=utf-8", "public, max-age=31536000, immutable"},
 		{"vendored font", get("/web/fonts/Geist-Variable.woff2"), http.StatusOK, "font/woff2", "public, max-age=31536000, immutable"},
@@ -91,6 +96,77 @@ func TestCSPHasNoUnsafeSources(t *testing.T) {
 					t.Errorf("%q allows %s", directive, bad)
 				}
 			}
+		}
+	}
+}
+
+// The pages are marked no-transform, so a proxy in front no longer compresses
+// them: the server gzips them itself, and the gzipped page must be the same
+// page byte for byte.
+func TestPagesAreGzippedByTheServer(t *testing.T) {
+	h := newServer(testConfig(), deadStore(t)).routes()
+	for _, path := range []string{"/", "/s/abc"} {
+		get := func(acceptEncoding string) *httptest.ResponseRecorder {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			req.RemoteAddr = "127.0.0.1:1"
+			if acceptEncoding != "" {
+				req.Header.Set("Accept-Encoding", acceptEncoding)
+			}
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
+			return rec
+		}
+		plain := get("")
+		if plain.Code != http.StatusOK || plain.Header().Get("Content-Encoding") != "" {
+			t.Fatalf("%s without Accept-Encoding: status %d, Content-Encoding %q", path, plain.Code, plain.Header().Get("Content-Encoding"))
+		}
+		for _, ae := range []string{"gzip", "gzip, deflate, br, zstd", "br;q=1.0, gzip;q=0.8"} {
+			rec := get(ae)
+			if got := rec.Header().Get("Content-Encoding"); got != "gzip" {
+				t.Fatalf("%s, Accept-Encoding %q: Content-Encoding %q", path, ae, got)
+			}
+			if got := rec.Header().Get("Cache-Control"); got != pageCacheControl {
+				t.Errorf("%s gzipped: Cache-Control %q", path, got)
+			}
+			if got := rec.Header().Get("Vary"); !strings.Contains(got, "Accept-Encoding") {
+				t.Errorf("%s gzipped: Vary %q", path, got)
+			}
+			if got := rec.Header().Get("Content-Length"); got != strconv.Itoa(rec.Body.Len()) {
+				t.Errorf("%s gzipped: Content-Length %q for %d bytes", path, got, rec.Body.Len())
+			}
+			zr, err := gzip.NewReader(rec.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			page, err := io.ReadAll(zr)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(page, plain.Body.Bytes()) {
+				t.Errorf("%s: the gzipped page is not the plain page", path)
+			}
+		}
+		if got := get("gzip;q=0").Header().Get("Content-Encoding"); got != "" {
+			t.Errorf("%s: gzip;q=0 still got Content-Encoding %q", path, got)
+		}
+	}
+}
+
+func TestAcceptsGzip(t *testing.T) {
+	for header, want := range map[string]bool{
+		"":                     false,
+		"identity":             false,
+		"br, zstd":             false,
+		"gzip":                 true,
+		"GZIP":                 true,
+		"gzip, deflate, br":    true,
+		"br;q=1.0, gzip;q=0.8": true,
+		"gzip;q=0":             false,
+		"gzip; Q=0.000":        false,
+		"gzip;q=nonsense":      false,
+	} {
+		if got := acceptsGzip(header); got != want {
+			t.Errorf("acceptsGzip(%q) = %v, want %v", header, got, want)
 		}
 	}
 }
