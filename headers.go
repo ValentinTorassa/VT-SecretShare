@@ -13,6 +13,7 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
 	"html"
@@ -20,6 +21,7 @@ import (
 	"log"
 	"mime"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -98,7 +100,8 @@ func securityHeaders(next http.Handler) http.Handler {
 		// Static assets are cached for a year: their URLs carry ?v=<assetVersion>,
 		// so a build that changes them changes the URL. HTML pages and API
 		// responses must not be cached (zero-knowledge ensures nothing sensitive
-		// is there, but stale UI or error pages are confusing).
+		// is there, but stale UI or error pages are confusing). servePage also
+		// marks the pages no-transform: see pageCacheControl.
 		if strings.HasPrefix(r.URL.Path, "/web/") {
 			h.Set("Cache-Control", "public, max-age=31536000, immutable")
 		} else {
@@ -148,4 +151,50 @@ var assetVersion = sync.OnceValue(func() string {
 func renderPage(page []byte, baseURL string) []byte {
 	page = bytes.ReplaceAll(page, []byte(assetVersionPlaceholder), []byte(assetVersion()))
 	return bytes.ReplaceAll(page, []byte(baseURLPlaceholder), []byte(html.EscapeString(baseURL)))
+}
+
+// pageCacheControl goes on the HTML pages. no-transform tells every proxy on
+// the way to deliver them exactly as sent. Without it Cloudflare adds its Web
+// Analytics script to each page: the CSP refuses it and the browser logs the
+// refusal, and a page that holds a key and a plaintext secret should not carry
+// code its server did not send. The directive also stops the proxy from
+// compressing the pages, so servePage sends them gzipped itself.
+const pageCacheControl = "no-store, no-transform"
+
+// gzipPage compresses a rendered page once, at start-up. A page is the same
+// for every request and nothing from the request ends up in it, so
+// compressing it leaks nothing (BREACH needs a secret and attacker-chosen
+// input in the same compressed body).
+func gzipPage(page []byte) []byte {
+	var buf bytes.Buffer
+	zw, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+	if err == nil {
+		_, err = zw.Write(page)
+	}
+	if err == nil {
+		err = zw.Close()
+	}
+	if err != nil {
+		log.Fatalf("cannot gzip a page: %v", err)
+	}
+	return buf.Bytes()
+}
+
+// acceptsGzip reports whether an Accept-Encoding header lets a response be
+// gzipped. A weight of zero ("gzip;q=0") refuses it.
+func acceptsGzip(header string) bool {
+	for part := range strings.SplitSeq(header, ",") {
+		name, params, _ := strings.Cut(part, ";")
+		if !strings.EqualFold(strings.TrimSpace(name), "gzip") {
+			continue
+		}
+		for param := range strings.SplitSeq(params, ";") {
+			if v, ok := strings.CutPrefix(strings.ToLower(strings.TrimSpace(param)), "q="); ok {
+				q, err := strconv.ParseFloat(v, 64)
+				return err == nil && q > 0
+			}
+		}
+		return true
+	}
+	return false
 }

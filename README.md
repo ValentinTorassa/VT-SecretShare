@@ -293,6 +293,13 @@ edge keep them, so the pages load them as `/web/<file>?v=<hash of web/>`
 fonts and the images are not versioned: give them a new file name if you ever
 replace them.
 
+The pages themselves are sent `no-store, no-transform`, so a proxy in front has
+to deliver them as the server wrote them. Without it Cloudflare adds its Web
+Analytics script to every page: the CSP refuses it (an error in the browser
+console), and a page that holds a key and a plaintext secret should not run
+code its server did not send. The proxy then no longer compresses the pages,
+so the server sends them gzipped itself.
+
 ## Notes / hardening ideas
 
 - Reveal is gated behind an explicit button click so link-preview crawlers
